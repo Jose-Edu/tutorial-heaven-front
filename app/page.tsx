@@ -1,7 +1,9 @@
-import Image from "next/image";
+import BasicCard from "./components/BasicCard";
 
 export default function Home() {
   return (
-    <h1>Hello, World!</h1>
-  )
+    <main className="p-8">
+      <BasicCard></BasicCard>
+    </main>
+  );
 }
