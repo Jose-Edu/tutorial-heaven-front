@@ -1,26 +1,80 @@
 @import "tailwindcss";
+@config "../tailwind.config.ts";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --muted: #52525b;
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+  --border: #e4e4e7;
+  --ring: #2563eb;
+  --code-background: #18181b;
+  --code-foreground: #f4f4f5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-code-background: var(--code-background);
+  --color-code-foreground: var(--code-foreground);
+  --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --surface: #18181b;
+  --surface-muted: #27272a;
+  --card: #18181b;
+  --card-foreground: #f4f4f5;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --muted: #a1a1aa;
+  --accent: #1e3a8a;
+  --accent-foreground: #dbeafe;
+  --border: #27272a;
+  --ring: #60a5fa;
+  --code-background: #09090b;
+  --code-foreground: #f4f4f5;
+}
+
+@keyframes float-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+@layer utilities {
+  .animate-float-in {
+    animation: float-in 600ms ease-out both;
+  }
 }
