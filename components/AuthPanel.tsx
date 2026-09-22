@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -20,10 +20,25 @@ type AlertState = {
   message: string;
 } | null;
 
+type AuthUser = {
+  id?: number;
+  name?: string;
+  email?: string;
+  [key: string]: unknown;
+};
+
 type FormState = {
   name: string;
   email: string;
   password: string;
+};
+
+type AuthResponse = {
+  message?: string;
+  token?: string;
+  user?: AuthUser;
+  error?: string;
+  errors?: Record<string, string[]>;
 };
 
 const emptyFormState: FormState = {
@@ -32,29 +47,42 @@ const emptyFormState: FormState = {
   password: "",
 };
 
-async function readResponseMessage(response: Response) {
+const authStorageKey = "tutorial-heaven-auth";
+
+async function readResponsePayload(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
 
-  if (contentType.includes("application/json")) {
-    const payload = (await response.json().catch(() => null)) as { message?: string; error?: string; errors?: Record<string, string[]> } | null;
-
-    if (payload?.message) {
-      return payload.message;
-    }
-
-    if (payload?.error) {
-      return payload.error;
-    }
-
-    const fieldErrors = payload?.errors;
-    const firstFieldError = fieldErrors ? Object.values(fieldErrors).flat()[0] : undefined;
-
-    if (firstFieldError) {
-      return firstFieldError;
-    }
+  if (!contentType.includes("application/json")) {
+    return null;
   }
 
-  return response.statusText || "O servidor respondeu com um erro inesperado.";
+  return (await response.json().catch(() => null)) as AuthResponse | null;
+}
+
+function getErrorMessage(payload: AuthResponse | null, fallback: string) {
+  if (payload?.message) {
+    return payload.message;
+  }
+
+  if (payload?.error) {
+    return payload.error;
+  }
+
+  const firstFieldError = payload?.errors ? Object.values(payload.errors).flat()[0] : undefined;
+
+  return firstFieldError ?? fallback;
+}
+
+function buildAuthHeaders(token?: string | null) {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export function AuthPanel() {
@@ -62,6 +90,34 @@ export function AuthPanel() {
   const [formState, setFormState] = useState<FormState>(emptyFormState);
   const [alertState, setAlertState] = useState<AlertState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem(authStorageKey);
+
+    if (!storedValue) {
+      return;
+    }
+
+    try {
+      const parsedValue = JSON.parse(storedValue) as { token?: string; user?: AuthUser };
+
+      setAuthToken(parsedValue.token ?? null);
+      setAuthUser(parsedValue.user ?? null);
+    } catch {
+      window.localStorage.removeItem(authStorageKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authToken && authUser) {
+      window.localStorage.setItem(authStorageKey, JSON.stringify({ token: authToken, user: authUser }));
+      return;
+    }
+
+    window.localStorage.removeItem(authStorageKey);
+  }, [authToken, authUser]);
 
   function updateField(field: keyof FormState, value: string) {
     setFormState((current) => ({ ...current, [field]: value }));
@@ -94,20 +150,68 @@ export function AuthPanel() {
         body: JSON.stringify(payload),
       });
 
+      const responsePayload = await readResponsePayload(response);
+
       if (!response.ok) {
-        setAlertState({ type: "error", message: await readResponseMessage(response) });
+        setAlertState({ type: "error", message: getErrorMessage(responsePayload, response.statusText || "O servidor respondeu com um erro inesperado.") });
         return;
+      }
+
+      if (responsePayload?.token && responsePayload.user) {
+        setAuthToken(responsePayload.token);
+        setAuthUser(responsePayload.user);
       }
 
       setAlertState({
         type: "success",
-        message: mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso.",
+        message: responsePayload?.message ?? (mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso."),
       });
       setFormState((current) => ({ ...current, password: "" }));
     } catch {
       setAlertState({
         type: "error",
         message: "Não foi possível conectar ao backend agora. Verifique o BACKEND_ROUTE.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function logout() {
+    if (!authToken) {
+      setAuthUser(null);
+      setAuthToken(null);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAlertState(null);
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: buildAuthHeaders(authToken),
+      });
+
+      const responsePayload = await readResponsePayload(response);
+
+      if (!response.ok) {
+        setAlertState({ type: "error", message: getErrorMessage(responsePayload, response.statusText || "Não foi possível sair da sessão.") });
+        return;
+      }
+
+      setAuthUser(null);
+      setAuthToken(null);
+      setFormState(emptyFormState);
+      setMode("login");
+      setAlertState({
+        type: "success",
+        message: responsePayload?.message ?? "Logout realizado com sucesso.",
+      });
+    } catch {
+      setAlertState({
+        type: "error",
+        message: "Não foi possível encerrar a sessão agora.",
       });
     } finally {
       setIsSubmitting(false);
@@ -133,6 +237,37 @@ export function AuthPanel() {
               A interface já conversa com o backend Laravel via rotas locais do Next.js.
             </Typography>
           </div>
+
+          {authUser ? (
+            <Card variant="outlined" sx={{ borderRadius: 4, borderColor: "var(--border)", backgroundColor: "var(--surface-muted)" }}>
+              <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                <Stack spacing={1.5}>
+                  <div>
+                    <Typography variant="subtitle2" sx={{ color: "var(--primary)", fontWeight: 700 }}>
+                      Sessão ativa
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: "var(--foreground)", fontWeight: 700 }}>
+                      {authUser.name ?? "Usuário autenticado"}
+                    </Typography>
+                    {authUser.email ? (
+                      <Typography variant="body2" sx={{ color: "var(--muted)" }}>
+                        {authUser.email}
+                      </Typography>
+                    ) : null}
+                  </div>
+
+                  <Button
+                    variant="outlined"
+                    onClick={logout}
+                    disabled={isSubmitting}
+                    sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}
+                  >
+                    {isSubmitting ? <CircularProgress size={18} color="inherit" /> : "Sair"}
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Tabs
             value={mode}
