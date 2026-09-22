@@ -1,4 +1,5 @@
 export { default as Footer } from "@/components/Footer";
+export { AuthPanel } from "@/components/AuthPanel";
 export { FeedbackState } from "@/components/FeedbackState";
 export { HeroSection } from "@/components/HeroSection";
 export { LoadingScreen } from "@/components/LoadingScreen";
