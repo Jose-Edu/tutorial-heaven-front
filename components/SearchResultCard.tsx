@@ -2,14 +2,9 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
+import type { ArticleMetadata } from "@/lib/articles";
 
-type SearchResultCardProps = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-export function SearchResultCard({ id, title, description }: SearchResultCardProps) {
+export function SearchResultCard({ id, title, description }: ArticleMetadata) {
   return (
     <Card
       className="flex h-full flex-col overflow-hidden border border-border bg-card md:flex-row"
@@ -20,13 +15,6 @@ export function SearchResultCard({ id, title, description }: SearchResultCardPro
         borderRadius: "8px",
       }}
     >
-      <div
-        className="flex h-40 shrink-0 items-center justify-center border-b border-border bg-surface-muted text-sm font-semibold uppercase tracking-wide text-muted md:h-auto md:w-40 md:border-b-0 md:border-r"
-        aria-label={`Imagem placeholder de ${title}`}
-        role="img"
-      >
-        Tutorial
-      </div>
       <CardContent className="flex min-w-0 flex-1 flex-col p-5 last:pb-5">
         <Typography
           component="h2"
@@ -41,7 +29,7 @@ export function SearchResultCard({ id, title, description }: SearchResultCardPro
           className="mt-2 flex-1 leading-6"
           sx={{ color: "var(--muted)" }}
         >
-          {description}
+          {description ?? "Sem descrição disponível."}
         </Typography>
         <Button
           href={`/page/${id}`}

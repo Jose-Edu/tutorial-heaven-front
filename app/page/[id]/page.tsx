@@ -1,8 +1,6 @@
-export default async function Page({params}: {params: Promise<{id: string}>}) {
-    const { id } = await params;
+import { ArticleReader } from "@/components/ArticleReader";
 
-    return (
-        <>
-        </>
-    );
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    return <ArticleReader key={id} id={id} />;
 }

@@ -2,37 +2,50 @@ import { FeedbackState } from "@/components/FeedbackState";
 import { PageContainer } from "@/components/PageContainer";
 import { SearchResultCard } from "@/components/SearchResultCard";
 import { SectionWrapper } from "@/components/SectionWrapper";
+import type { ArticleMetadata } from "@/lib/articles";
 
-const mockResults = [
+const mockResults: ArticleMetadata[] = [
     {
         id: "nextjs-app-router",
         title: "Construindo rotas com o App Router",
         description: "Aprenda a organizar páginas, layouts e navegação em projetos modernos com Next.js.",
+        createdAt: null,
+        updatedAt: null,
     },
     {
         id: "tailwind-responsive",
         title: "Interfaces responsivas com Tailwind CSS",
         description: "Use grids, flexbox e breakpoints para criar experiências consistentes em qualquer tela.",
+        createdAt: null,
+        updatedAt: null,
     },
     {
         id: "mui-components",
         title: "Componentes acessíveis com MUI",
         description: "Combine componentes prontos e estilos personalizados para acelerar seu desenvolvimento.",
+        createdAt: null,
+        updatedAt: null,
     },
     {
         id: "typescript-basics",
         title: "TypeScript para interfaces confiáveis",
         description: "Veja como tipar propriedades, eventos e dados para reduzir erros no frontend.",
+        createdAt: null,
+        updatedAt: null,
     },
     {
         id: "api-routes",
         title: "Criando endpoints no Next.js",
         description: "Estruture rotas de API no App Router e conecte sua interface a dados reais.",
+        createdAt: null,
+        updatedAt: null,
     },
     {
         id: "design-systems",
         title: "Fundamentos de um design system",
         description: "Defina tokens, componentes e padrões visuais para manter seu produto consistente.",
+        createdAt: null,
+        updatedAt: null,
     },
 ];
 

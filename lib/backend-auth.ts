@@ -22,7 +22,7 @@ function copyResponseHeaders(source: Response, target: NextResponse) {
   }
 }
 
-export async function proxyAuthRequest(request: NextRequest, backendPath: string) {
+export async function proxyBackendRequest(request: NextRequest, backendPath: string) {
   const backendUrl = buildBackendUrl(backendPath);
   const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
   const body = isBodyAllowed ? await request.text() : undefined;
@@ -55,3 +55,5 @@ export async function proxyAuthRequest(request: NextRequest, backendPath: string
 
   return proxiedResponse;
 }
+
+export const proxyAuthRequest = proxyBackendRequest;

@@ -17,6 +17,8 @@
   --ring: #2563eb;
   --code-background: #18181b;
   --code-foreground: #f4f4f5;
+  --viewer-link: #1d4ed8;
+  --viewer-link-visited: #6d28d9;
 }
 
 @theme inline {
@@ -55,6 +57,8 @@
   --ring: #60a5fa;
   --code-background: #09090b;
   --code-foreground: #f4f4f5;
+  --viewer-link: #93c5fd;
+  --viewer-link-visited: #c4b5fd;
 }
 
 @keyframes float-in {
@@ -66,6 +70,135 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+.article-content h2,
+.article-content h3,
+.article-content h4 {
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.article-content h2 { font-size: 1.75rem; }
+.article-content h3 { font-size: 1.35rem; }
+.article-content h4 { font-size: 1.1rem; }
+.article-content h1 { font-size: 2.25rem; font-weight: 700; line-height: 1.2; }
+.article-content p, .article-content ul, .article-content ol, .article-content blockquote { margin-top: 1.25rem; }
+.article-content ul, .article-content ol { padding-left: 1.5rem; }
+.article-content ul { list-style: disc; }
+.article-content ol { list-style: decimal; }
+.article-content li + li { margin-top: 0.35rem; }
+.article-content blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; color: var(--muted); }
+.article-content hr { margin: 2.5rem 0; border-color: var(--border); }
+.article-content table { width: 100%; margin-top: 1.5rem; border-collapse: collapse; text-align: left; }
+.article-content th, .article-content td { border: 1px solid var(--border); padding: 0.75rem 1rem; }
+.article-content th { background: var(--surface-muted); font-weight: 700; }
+.article-content a { color: var(--viewer-link); }
+.article-content a:visited { color: var(--viewer-link-visited); }
+.article-content a:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.article-content img { display: block; }
+.article-content ::selection { background: var(--accent); color: var(--accent-foreground); }
+
+.article-editor [data-color-mode="dark"] {
+  color-scheme: dark;
+}
+
+.dark .article-editor-shell .MuiOutlinedInput-root {
+  color: var(--foreground);
+  background-color: var(--surface);
+}
+
+.dark .article-editor-shell .MuiOutlinedInput-notchedOutline {
+  border-color: var(--border);
+}
+
+.dark .article-editor-shell .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--muted);
+}
+
+.dark .article-editor-shell .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--ring);
+}
+
+.dark .article-editor-shell .MuiInputLabel-root,
+.dark .article-editor-shell .MuiFormHelperText-root {
+  color: var(--muted);
+}
+
+.dark .article-editor-shell .MuiInputLabel-root.Mui-focused {
+  color: var(--ring);
+}
+
+.dark .article-editor-shell .MuiAlert-root {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.dark .article-editor-shell .MuiAlert-icon,
+.dark .article-editor-shell .MuiAlert-action .MuiIconButton-root {
+  color: var(--foreground);
+}
+
+.dark .article-editor-shell .MuiButton-outlined {
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.dark .article-editor-shell .MuiButton-outlined:hover {
+  border-color: var(--ring);
+  background-color: var(--surface-muted);
+}
+
+.dark .article-editor,
+.dark .article-editor .w-md-editor,
+.dark .article-editor .w-md-editor-content,
+.dark .article-editor .w-md-editor-toolbar {
+  --color-fg-default: var(--foreground);
+  --color-canvas-default: var(--surface);
+  --color-canvas-subtle: var(--surface-muted);
+  --color-border-default: var(--border);
+  --color-neutral-muted: var(--surface-muted);
+  --color-accent-fg: var(--primary);
+  --md-editor-background-color: var(--surface);
+  --md-editor-box-shadow-color: var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.dark .article-editor .w-md-editor-text-pre,
+.dark .article-editor .w-md-editor-text-input,
+.dark .article-editor .w-md-editor-text,
+.dark .article-editor .w-md-editor-preview {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.dark .article-editor .w-md-editor-toolbar button {
+  color: var(--muted);
+}
+
+.dark .article-editor .w-md-editor-toolbar button:hover,
+.dark .article-editor .w-md-editor-toolbar button:focus-visible {
+  color: var(--foreground);
+  background: var(--surface-muted);
+}
+
+.dark .article-editor .w-md-editor-toolbar button.active {
+  color: var(--primary);
+  background: var(--surface-muted);
+}
+
+.dark .article-editor .w-md-editor-preview h1,
+.dark .article-editor .w-md-editor-preview h2,
+.dark .article-editor .w-md-editor-preview h3,
+.dark .article-editor .w-md-editor-preview h4,
+.dark .article-editor .w-md-editor-preview p,
+.dark .article-editor .w-md-editor-preview li {
+  color: var(--foreground);
 }
 
 ::selection {
