@@ -11,20 +11,20 @@ export default function Home() {
               Tutorial Heaven
             </span>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Login e cadastro com a estrutura visual já existente.
+              Entre na sua conta ou crie uma nova em poucos segundos.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted sm:text-lg">
-              A tela usa o mesmo sistema visual do restante do app e envia as credenciais para o backend Laravel por meio de rotas locais do Next.js.
+              Acesse sua área com uma interface simples, clara e pronta para uso.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-border bg-background/80 p-4">
-                <p className="text-sm font-semibold text-foreground">Auth pronta</p>
-                <p className="mt-2 text-sm leading-6 text-muted">Entrar, cadastrar, e passar a resposta do backend adiante sem expor a URL no cliente.</p>
+                <p className="text-sm font-semibold text-foreground">Acesso rápido</p>
+                <p className="mt-2 text-sm leading-6 text-muted">Faça login ou cadastre-se sem distrações.</p>
               </div>
               <div className="rounded-2xl border border-border bg-background/80 p-4">
-                <p className="text-sm font-semibold text-foreground">Layout consistente</p>
-                <p className="mt-2 text-sm leading-6 text-muted">Header, footer e estilo Material seguem a base já estabelecida no projeto.</p>
+                <p className="text-sm font-semibold text-foreground">Experiência leve</p>
+                <p className="mt-2 text-sm leading-6 text-muted">Tudo o que você precisa em uma tela objetiva.</p>
               </div>
             </div>
           </div>

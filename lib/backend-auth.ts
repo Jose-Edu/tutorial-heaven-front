@@ -22,36 +22,67 @@ function copyResponseHeaders(source: Response, target: NextResponse) {
   }
 }
 
-export async function proxyAuthRequest(request: NextRequest, backendPath: string) {
-  const backendUrl = buildBackendUrl(backendPath);
-  const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
-  const body = isBodyAllowed ? await request.text() : undefined;
-  const authorization = request.headers.get("authorization");
-  const response = await fetch(backendUrl, {
-    method: request.method,
-    headers: {
-      accept: request.headers.get("accept") ?? "application/json",
-      "content-type": request.headers.get("content-type") ?? "application/json",
-      cookie: request.headers.get("cookie") ?? "",
-      ...(authorization ? { authorization } : {}),
-      "x-requested-with": "XMLHttpRequest",
-    },
-    body,
-    cache: "no-store",
-  });
+async function readResponseMessage(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
 
-  const proxiedResponse = new NextResponse(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-  });
+  if (contentType.includes("application/json")) {
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+      error?: string;
+    } | null;
 
-  copyResponseHeaders(response, proxiedResponse);
-
-  const responseContentType = response.headers.get("content-type");
-
-  if (responseContentType) {
-    proxiedResponse.headers.set("content-type", responseContentType);
+    return payload?.message ?? payload?.error ?? response.statusText;
   }
 
-  return proxiedResponse;
+  const text = await response.text().catch(() => "");
+
+  return text.trim() || response.statusText;
+}
+
+function buildFallbackErrorResponse(message: string) {
+  return NextResponse.json({ message }, { status: 502 });
+}
+
+export async function proxyAuthRequest(request: NextRequest, backendPath: string) {
+  try {
+    const backendUrl = buildBackendUrl(backendPath);
+    const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
+    const body = isBodyAllowed ? await request.text() : undefined;
+    const authorization = request.headers.get("authorization");
+    const response = await fetch(backendUrl, {
+      method: request.method,
+      headers: {
+        accept: request.headers.get("accept") ?? "application/json",
+        "content-type": request.headers.get("content-type") ?? "application/json",
+        cookie: request.headers.get("cookie") ?? "",
+        ...(authorization ? { authorization } : {}),
+        "x-requested-with": "XMLHttpRequest",
+      },
+      body,
+      cache: "no-store",
+    });
+
+    const responseContentType = response.headers.get("content-type") ?? "";
+
+    if (!response.ok && !responseContentType.includes("application/json")) {
+      return buildFallbackErrorResponse(await readResponseMessage(response));
+    }
+
+    const proxiedResponse = new NextResponse(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+    });
+
+    copyResponseHeaders(response, proxiedResponse);
+
+    if (responseContentType) {
+      proxiedResponse.headers.set("content-type", responseContentType);
+    }
+
+    return proxiedResponse;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha ao contatar o backend Laravel.";
+
+    return buildFallbackErrorResponse(message);
+  }
 }

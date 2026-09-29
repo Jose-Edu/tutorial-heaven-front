@@ -139,6 +139,7 @@ export function AuthPanel() {
             name: formState.name,
             email: formState.email,
             password: formState.password,
+            password_confirmation: formState.password,
           };
 
       const response = await fetch(endpoint, {
@@ -234,7 +235,7 @@ export function AuthPanel() {
               Entre ou crie sua conta
             </Typography>
             <Typography sx={{ mt: 1, color: "var(--muted)" }}>
-              A interface já conversa com o backend Laravel via rotas locais do Next.js.
+              Use sua conta para continuar de onde parou.
             </Typography>
           </div>
 
@@ -365,8 +366,8 @@ export function AuthPanel() {
 
               <Typography variant="body2" sx={{ color: "var(--muted)", lineHeight: 1.7 }}>
                 {mode === "login"
-                  ? "Ao entrar, a resposta do backend é repassada pelo Next.js para que você possa continuar com a mesma sessão."
-                  : "Se o cadastro for bem-sucedido, você já recebe a resposta do backend sem mudar a estrutura da interface."}
+                  ? "Ao entrar, sua sessão fica pronta para continuar."
+                  : "Se o cadastro for bem-sucedido, você já pode seguir para a próxima etapa."}
               </Typography>
             </Stack>
           </form>
