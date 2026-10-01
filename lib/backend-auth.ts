@@ -56,7 +56,6 @@ export async function proxyBackendRequest(request: NextRequest, backendPath: str
   return proxiedResponse;
 }
 
-export const proxyAuthRequest = proxyBackendRequest;
 async function readResponseMessage(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
 
