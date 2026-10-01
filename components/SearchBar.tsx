@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ClearIcon from "@mui/icons-material/Clear";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
@@ -9,6 +10,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 
 export function SearchBar() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -22,7 +24,7 @@ export function SearchBar() {
       return;
     }
 
-    console.log("Busca por:", term);
+    router.push(`/search?q=${encodeURIComponent(term)}`);
   }
 
   function openMobileSearch() {

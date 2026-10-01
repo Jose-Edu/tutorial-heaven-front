@@ -5,12 +5,13 @@ import { MainLayout } from "@/components/MainLayout";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <title>Tutorial Heaven</title>
         <meta name="description" content="Tutoriais claros para construir coisas extraordinárias." />
       </head>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: `(() => { const key = "tutorial-heaven-theme"; const saved = localStorage.getItem(key); const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.classList.toggle("dark", dark); })();` }} />
         <AppRouterCacheProvider>
           <MainLayout>{children}</MainLayout>
         </AppRouterCacheProvider>
