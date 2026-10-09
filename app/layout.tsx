@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import '@/app/globals.css';
+import { AuthProvider } from "@/components/AuthProvider";
 import { MainLayout } from "@/components/MainLayout";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <script dangerouslySetInnerHTML={{ __html: `(() => { const key = "tutorial-heaven-theme"; const saved = localStorage.getItem(key); const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.classList.toggle("dark", dark); })();` }} />
         <AppRouterCacheProvider>
-          <MainLayout>{children}</MainLayout>
+          <AuthProvider>
+            <MainLayout>{children}</MainLayout>
+          </AuthProvider>
         </AppRouterCacheProvider>
       </body>
     </html>

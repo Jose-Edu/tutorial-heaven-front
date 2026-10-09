@@ -1,157 +1,144 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Skeleton from "@mui/material/Skeleton";
+import { getTagSteps, getTags, type TagOption, type TagStep } from "@/lib/tags";
 
-interface Tag {
-  id: number;
-  name: string;
-  category: "area" | "technology" | "seniority";
-}
+type TagSelectionFormProps = {
+  selectedTagIds: string[];
+  onChange: (tagIds: string[]) => void;
+};
 
-const AVAILABLE_TAGS: Tag[] = [
+export function TagSelectionForm({ selectedTagIds, onChange }: TagSelectionFormProps) {
+  const [steps, setSteps] = useState<TagStep[]>([]);
+  const [tags, setTags] = useState<TagOption[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
-  { id: 1, name: "Frontend", category: "area" },
-  { id: 2, name: "Backend", category: "area" },
-  { id: 3, name: "Fullstack", category: "area" },
+  useEffect(() => {
+    const controller = new AbortController();
 
-  { id: 4, name: "React / Next.js", category: "technology" },
-  { id: 5, name: "Node.js / Express", category: "technology" },
-  { id: 6, name: "PHP / Laravel", category: "technology" },
+    Promise.all([getTagSteps(controller.signal), getTags(controller.signal)]).then(
+      ([loadedSteps, loadedTags]) => {
+        if (controller.signal.aborted) return;
+        setSteps(loadedSteps);
+        setTags(loadedTags);
+      },
+      (reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(reason instanceof Error ? reason.message : "Não foi possível carregar as opções de tags.");
+        }
+      },
+    ).finally(() => {
+      if (!controller.signal.aborted) setIsLoading(false);
+    });
 
-  { id: 7, name: "Júnior", category: "seniority" },
-  { id: 8, name: "Pleno", category: "seniority" },
-  { id: 9, name: "Sénior", category: "seniority" },
-];
+    return () => controller.abort();
+  }, [retryKey]);
 
-export default function TagSelectionForm() {
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  const steps = [
-    { title: "Área de Atuação", category: "area" },
-    { title: "Tecnologias", category: "technology" },
-    { title: "Nível de Experiência", category: "seniority" },
-  ];
-
-  const toggleTag = (id: number) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(id) ? prev.filter((tagId) => tagId !== id) : [...prev, id]
+  function toggleTag(tagId: string) {
+    onChange(
+      selectedTagIds.includes(tagId)
+        ? selectedTagIds.filter((selectedId) => selectedId !== tagId)
+        : [...selectedTagIds, tagId],
     );
-  };
+  }
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/user/tags", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ tag_ids: selectedTagIds }),
-      });
+  function retryLoading() {
+    setIsLoading(true);
+    setError(null);
+    setRetryKey((key) => key + 1);
+  }
 
-      if (response.ok) {
-        alert("Tags salvas com sucesso!");
-      } else {
-        alert("Erro ao salvar as tags.");
-      }
-    } catch (error) {
-      console.error("Erro na requisição:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  if (isLoading) {
+    return (
+      <section className="rounded-lg border border-border bg-card p-5" aria-label="Carregando opções de tags">
+        <Skeleton width="40%" height={32} />
+        <Skeleton width="100%" height={48} />
+        <Skeleton width="80%" height={48} />
+      </section>
+    );
+  }
 
-  const currentCategory = steps[currentStep - 1].category;
-  const filteredTags = AVAILABLE_TAGS.filter(
-    (tag) => tag.category === currentCategory
-  );
+  if (error) {
+    return (
+      <Alert severity="error" action={<Button color="inherit" onClick={retryLoading}>Tentar novamente</Button>}>
+        {error}
+      </Alert>
+    );
+  }
+
+  if (steps.length === 0 || tags.length === 0) {
+    return <Alert severity="info">Não há opções de tags disponíveis.</Alert>;
+  }
+
+  const activeStep = steps[currentStep];
+  const matchingTags = tags.filter((tag) => {
+    if (tag.groupIds.length === 0) return steps.length === 1;
+    return tag.groupIds.some((groupId) => activeStep.aliases.includes(groupId));
+  });
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-surface border border-border rounded-xl shadow-md">
-      {/* Indicador de Passos */}
-      <div className="flex justify-between items-center mb-6">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          return (
-            <div key={step.category} className="flex items-center gap-2">
-              <span
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === stepNumber
-                    ? "bg-primary text-primary-foreground"
-                    : currentStep > stepNumber
-                    ? "bg-muted text-foreground"
-                    : "bg-border text-muted"
+    <section className="rounded-lg border border-border bg-card p-5">
+      <h2 className="text-lg font-semibold text-foreground">Tags do artigo</h2>
+      <p className="mt-1 text-sm text-muted">Selecione as tags disponíveis para este artigo.</p>
+
+      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Etapas das tags">
+        {steps.map((step, index) => (
+          <Button
+            key={step.id}
+            type="button"
+            variant={currentStep === index ? "contained" : "outlined"}
+            onClick={() => setCurrentStep(index)}
+            aria-current={currentStep === index ? "step" : undefined}
+            sx={{ textTransform: "none" }}
+          >
+            {step.label}
+          </Button>
+        ))}
+      </div>
+
+      {matchingTags.length > 0 ? (
+        <div className="mt-5 flex flex-wrap gap-3" role="group" aria-label={activeStep.label}>
+          {matchingTags.map((tag) => {
+            const isSelected = selectedTagIds.includes(tag.id);
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => toggleTag(tag.id)}
+                className={`rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                  isSelected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground hover:border-primary"
                 }`}
               >
-                {stepNumber}
-              </span>
-              <span className="text-xs text-muted font-medium hidden sm:inline">
-                {step.title}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                {tag.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <Alert severity="info" sx={{ mt: 3 }}>Não há tags nesta etapa.</Alert>
+      )}
 
-      {/* Título do Passo Atual */}
-      <h2 className="text-xl font-semibold text-foreground mb-4">
-        {steps[currentStep - 1].title}
-      </h2>
-
-      {/* Lista de Tags do Passo */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        {filteredTags.map((tag) => {
-          const isSelected = selectedTagIds.includes(tag.id);
-          return (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => toggleTag(tag.id)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                isSelected
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:border-primary"
-              }`}
-            >
-              {tag.name}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Botões de Navegação */}
-      <div className="flex justify-between items-center border-t border-border pt-4">
-        <button
-          type="button"
-          onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 1))}
-          disabled={currentStep === 1}
-          className="px-4 py-2 text-sm text-muted hover:text-foreground disabled:opacity-40"
-        >
+      <div className="mt-6 flex justify-between border-t border-border pt-4">
+        <Button type="button" disabled={currentStep === 0} onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}>
           Voltar
-        </button>
-
-        {currentStep < steps.length ? (
-          <button
-            type="button"
-            onClick={() => setCurrentStep((prev) => prev + 1)}
-            className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90"
-          >
-            Avançar
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting || selectedTagIds.length === 0}
-            className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
-          >
-            {isSubmitting ? "A guardar..." : "Finalizar"}
-          </button>
-        )}
+        </Button>
+        <Button
+          type="button"
+          disabled={currentStep === steps.length - 1}
+          onClick={() => setCurrentStep((step) => Math.min(step + 1, steps.length - 1))}
+        >
+          Avançar
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }

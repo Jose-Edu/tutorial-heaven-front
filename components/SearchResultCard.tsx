@@ -32,7 +32,7 @@ export function SearchResultCard({ id, title, description }: ArticleMetadata) {
           {description ?? "Sem descrição disponível."}
         </Typography>
         <Button
-          href={`/page/${id}`}
+          href={`/page/${encodeURIComponent(id)}`}
           variant="contained"
           size="small"
           className="mt-5 self-start"
@@ -42,7 +42,7 @@ export function SearchResultCard({ id, title, description }: ArticleMetadata) {
             boxShadow: "none",
             color: "var(--primary-foreground)",
             textTransform: "none",
-            "&:hover": { backgroundColor: "var(--accent-foreground)", boxShadow: "none" },
+            "&:hover": { backgroundColor: "var(--primary-hover)", boxShadow: "none" },
           }}
         >
           Ver detalhes

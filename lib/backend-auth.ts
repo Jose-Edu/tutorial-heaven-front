@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const authTokenCookieName = "tutorial-heaven-access-token";
+
 function getBackendBaseUrl() {
   const backendRoute = process.env.BACKEND_ROUTE?.trim();
 
@@ -15,30 +17,42 @@ function buildBackendUrl(pathname: string) {
 }
 
 function copyResponseHeaders(source: Response, target: NextResponse) {
-  const setCookie = source.headers.get("set-cookie");
-
-  if (setCookie) {
-    target.headers.set("set-cookie", setCookie);
+  const contentType = source.headers.get("content-type");
+  if (contentType) {
+    target.headers.set("content-type", contentType);
   }
 }
 
-export async function proxyBackendRequest(request: NextRequest, backendPath: string) {
-  const backendUrl = buildBackendUrl(backendPath);
+function buildBackendHeaders(request: NextRequest) {
+  const token = request.cookies.get(authTokenCookieName)?.value;
+  return {
+    accept: request.headers.get("accept") ?? "application/json",
+    "content-type": request.headers.get("content-type") ?? "application/json",
+    "x-requested-with": "XMLHttpRequest",
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function sendToBackend(request: NextRequest, backendPath: string) {
+  const backendUrl = buildBackendUrl(`${backendPath}${request.nextUrl.search}`);
   const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
   const body = isBodyAllowed ? await request.text() : undefined;
-  const authorization = request.headers.get("authorization");
-  const response = await fetch(backendUrl, {
+  return fetch(backendUrl, {
     method: request.method,
-    headers: {
-      accept: request.headers.get("accept") ?? "application/json",
-      "content-type": request.headers.get("content-type") ?? "application/json",
-      cookie: request.headers.get("cookie") ?? "",
-      ...(authorization ? { authorization } : {}),
-      "x-requested-with": "XMLHttpRequest",
-    },
+    headers: buildBackendHeaders(request),
     body,
     cache: "no-store",
   });
+}
+
+function proxyResponse(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!response.ok && !contentType.includes("application/json")) {
+    return NextResponse.json(
+      { message: "O backend retornou um erro inesperado." },
+      { status: response.status },
+    );
+  }
 
   const proxiedResponse = new NextResponse(response.body, {
     status: response.status,
@@ -46,77 +60,82 @@ export async function proxyBackendRequest(request: NextRequest, backendPath: str
   });
 
   copyResponseHeaders(response, proxiedResponse);
-
-  const responseContentType = response.headers.get("content-type");
-
-  if (responseContentType) {
-    proxiedResponse.headers.set("content-type", responseContentType);
-  }
-
   return proxiedResponse;
 }
 
-async function readResponseMessage(response: Response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("application/json")) {
-    const payload = (await response.json().catch(() => null)) as {
-      message?: string;
-      error?: string;
-    } | null;
-
-    return payload?.message ?? payload?.error ?? response.statusText;
-  }
-
-  const text = await response.text().catch(() => "");
-
-  return text.trim() || response.statusText;
+function backendUnavailable(error: unknown) {
+  console.error("Failed to contact Laravel backend.", error);
+  return NextResponse.json(
+    { message: "Não foi possível contatar o backend Laravel." },
+    { status: 502 },
+  );
 }
 
-function buildFallbackErrorResponse(message: string) {
-  return NextResponse.json({ message }, { status: 502 });
+function authCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
+
+export function clearAuthTokenCookie(response: NextResponse) {
+  response.cookies.set(authTokenCookieName, "", {
+    ...authCookieOptions(),
+    maxAge: 0,
+  });
+  return response;
+}
+
+export async function proxyBackendRequest(request: NextRequest, backendPath: string) {
+  try {
+    const response = await sendToBackend(request, backendPath);
+    const proxiedResponse = proxyResponse(response);
+    return response.status === 401 ? clearAuthTokenCookie(proxiedResponse) : proxiedResponse;
+  } catch (error) {
+    return backendUnavailable(error);
+  }
 }
 
 export async function proxyAuthRequest(request: NextRequest, backendPath: string) {
   try {
-    const backendUrl = buildBackendUrl(backendPath);
-    const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
-    const body = isBodyAllowed ? await request.text() : undefined;
-    const authorization = request.headers.get("authorization");
-    const response = await fetch(backendUrl, {
-      method: request.method,
-      headers: {
-        accept: request.headers.get("accept") ?? "application/json",
-        "content-type": request.headers.get("content-type") ?? "application/json",
-        cookie: request.headers.get("cookie") ?? "",
-        ...(authorization ? { authorization } : {}),
-        "x-requested-with": "XMLHttpRequest",
-      },
-      body,
-      cache: "no-store",
-    });
+    const response = await sendToBackend(request, backendPath);
+    const isLogin = backendPath === "/login";
+    const isRegister = backendPath === "/register";
+    const isLogout = backendPath === "/logout";
+    const shouldClearToken = isLogout && (response.ok || response.status === 401);
+    let proxiedResponse: NextResponse;
 
-    const responseContentType = response.headers.get("content-type") ?? "";
+    if ((isLogin || isRegister) && response.ok) {
+      const payload: unknown = await response.json();
+      const token =
+        typeof payload === "object" &&
+        payload !== null &&
+        "token" in payload &&
+        typeof payload.token === "string" &&
+        payload.token.length > 0
+          ? payload.token
+          : null;
+      if (isLogin && !token) {
+        return NextResponse.json(
+          { message: "A resposta de login não contém um token Bearer válido." },
+          { status: 502 },
+        );
+      }
 
-    if (!response.ok && !responseContentType.includes("application/json")) {
-      return buildFallbackErrorResponse(await readResponseMessage(response));
+      const safePayload =
+        typeof payload === "object" && payload !== null && "token" in payload
+          ? Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "token"))
+          : payload;
+      proxiedResponse = NextResponse.json(safePayload, { status: response.status });
+      if (token) proxiedResponse.cookies.set(authTokenCookieName, token, authCookieOptions());
+    } else {
+      proxiedResponse = proxyResponse(response);
     }
 
-    const proxiedResponse = new NextResponse(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-    });
-
-    copyResponseHeaders(response, proxiedResponse);
-
-    if (responseContentType) {
-      proxiedResponse.headers.set("content-type", responseContentType);
-    }
-
-    return proxiedResponse;
+    return shouldClearToken ? clearAuthTokenCookie(proxiedResponse) : proxiedResponse;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha ao contatar o backend Laravel.";
-
-    return buildFallbackErrorResponse(message);
+    return backendUnavailable(error);
   }
 }
