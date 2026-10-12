@@ -8,7 +8,7 @@ type ArticleViewerProps = {
 };
 
 const markdownComponents: Components = {
-  a: ({ href, children }) => <a className="font-semibold text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring visited:text-accent-foreground" href={href} rel={href?.startsWith("http") ? "noreferrer" : undefined} target={href?.startsWith("http") ? "_blank" : undefined}>{children}</a>,
+  a: ({ href, children }) => <a className="font-semibold text-primary underline decoration-primary underline-offset-4 hover:decoration-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring visited:text-accent-foreground" href={href} rel={href?.startsWith("http") ? "noreferrer" : undefined} target={href?.startsWith("http") ? "_blank" : undefined}>{children}</a>,
   code: ({ children, className }) => <code className={className ?? "rounded bg-surface-muted px-1.5 py-0.5 font-mono text-sm text-foreground"}>{children}</code>,
   pre: ({ children }) => <pre className="overflow-x-auto rounded-lg bg-code-background p-5 text-sm leading-6 text-code-foreground">{children}</pre>,
   table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,

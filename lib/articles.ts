@@ -13,9 +13,9 @@ export type Article = ArticleMetadata & {
 };
 
 export type CreateArticleInput = {
-  title: string;
-  description: string;
   content: string;
+  title?: string;
+  description?: string;
 };
 
 export type UpdateArticleInput = CreateArticleInput;
@@ -33,6 +33,63 @@ function readString(value: unknown, fallback = "") {
 
 function readNullableString(value: unknown) {
   return typeof value === "string" ? value : null;
+}
+
+function stripMarkdownFormatting(markdown: string) {
+  return markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_`~\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTitleFromMarkdown(markdown: string) {
+  const firstHeading = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (firstHeading) return firstHeading;
+
+  const firstTextLine = markdown
+    .split(/\r?\n/)
+    .map((line) => stripMarkdownFormatting(line))
+    .find((line) => line.length > 0);
+
+  return firstTextLine ?? "Artigo";
+}
+
+function extractDescriptionFromMarkdown(markdown: string) {
+  const paragraphs = markdown
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => stripMarkdownFormatting(paragraph))
+    .filter((paragraph) => paragraph.length > 0)
+    .filter((paragraph) => !paragraph.startsWith("#"));
+
+  if (paragraphs.length === 0) return null;
+
+  const paragraph = paragraphs[0];
+  return paragraph.length > 180 ? `${paragraph.slice(0, 177).trimEnd()}...` : paragraph;
+}
+
+function deriveTitle(value: Record<string, unknown>, markdown: string) {
+  const explicit = readString(value.title).trim();
+  if (explicit) return explicit;
+  return extractTitleFromMarkdown(markdown).trim() || "Artigo";
+}
+
+function deriveDescription(value: Record<string, unknown>, markdown: string) {
+  const explicit = readNullableString(value.description);
+  if (explicit) return explicit;
+
+  const title = extractTitleFromMarkdown(markdown).trim();
+  const paragraphs = markdown
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => stripMarkdownFormatting(paragraph))
+    .filter((paragraph) => paragraph.length > 0 && paragraph !== title)
+    .filter((paragraph) => !paragraph.startsWith("#"));
+
+  if (paragraphs.length === 0) return null;
+
+  const choice = paragraphs[0];
+  return choice.length > 180 ? `${choice.slice(0, 177).trimEnd()}...` : choice;
 }
 
 function unwrapPayload(payload: unknown): Record<string, unknown> | null {
@@ -73,13 +130,18 @@ export function decodeMarkdownBase64(encoded: string) {
 
 export function normalizeArticle(payload: unknown): Article | null {
   const value = unwrapPayload(payload);
-  if (!value || (typeof value.id !== "string" && typeof value.id !== "number") || typeof value.title !== "string" || typeof value.content !== "string") return null;
+  if (!value || (typeof value.id !== "string" && typeof value.id !== "number")) return null;
+
+  const contentValue = readString(value.content);
+  if (!contentValue) return null;
+
+  const content = decodeMarkdownBase64(contentValue);
 
   return {
     id: String(value.id),
-    title: value.title,
-    description: readNullableString(value.description),
-    content: decodeMarkdownBase64(value.content),
+    title: deriveTitle(value, content),
+    description: deriveDescription(value, content),
+    content,
     createdAt: readNullableString(value.createdAt ?? value.created_at),
     updatedAt: readNullableString(value.updatedAt ?? value.updated_at),
   };
@@ -87,12 +149,16 @@ export function normalizeArticle(payload: unknown): Article | null {
 
 export function normalizeArticleMetadata(payload: unknown): ArticleMetadata | null {
   const value = unwrapPayload(payload);
-  if (!value || (typeof value.id !== "string" && typeof value.id !== "number") || typeof value.title !== "string") return null;
+  if (!value || (typeof value.id !== "string" && typeof value.id !== "number")) return null;
 
+  const contentValue = readString(value.content);
+  if (!contentValue) return null;
+
+  const content = decodeMarkdownBase64(contentValue);
   return {
     id: String(value.id),
-    title: value.title,
-    description: readNullableString(value.description),
+    title: deriveTitle(value, content),
+    description: deriveDescription(value, content),
     createdAt: readNullableString(value.createdAt ?? value.created_at),
     updatedAt: readNullableString(value.updatedAt ?? value.updated_at),
   };
@@ -104,7 +170,7 @@ async function requestArticle(path: string, init: RequestInit = {}) {
 
 function toArticlePayload(input: CreateArticleInput) {
   const normalized = toArticleInput(input);
-  return { ...normalized, content: encodeMarkdownBase64(normalized.content) };
+  return { content: encodeMarkdownBase64(normalized.content) };
 }
 
 function payloadRows(payload: unknown): unknown[] {
@@ -118,22 +184,15 @@ function payloadRows(payload: unknown): unknown[] {
 export async function getArticles(signal?: AbortSignal) {
   const payload = await requestArticle("/api/articles", { signal });
   return payloadRows(payload).map((row) => {
-    const value = isRecord(row) ? row : null;
-    if (value && typeof value.content === "string") {
-      const article = normalizeArticle(value);
-      if (!article) throw new Error("A resposta de um artigo da listagem está incompleta.");
-      return {
-        id: article.id,
-        title: article.title,
-        description: article.description,
-        createdAt: article.createdAt,
-        updatedAt: article.updatedAt,
-      };
-    }
-
-    const metadata = normalizeArticleMetadata(row);
-    if (!metadata) throw new Error("A resposta de um artigo da listagem está incompleta.");
-    return metadata;
+    const article = normalizeArticle(row);
+    if (!article) throw new Error("A resposta de um artigo da listagem está incompleta.");
+    return {
+      id: article.id,
+      title: article.title,
+      description: article.description,
+      createdAt: article.createdAt,
+      updatedAt: article.updatedAt,
+    };
   });
 }
 
@@ -145,11 +204,17 @@ export async function getArticle(id: string, signal?: AbortSignal) {
 }
 
 export async function createArticle(input: CreateArticleInput) {
-  await requestArticle("/api/articles", { method: "POST", body: JSON.stringify(toArticlePayload(input)) });
+  await requestArticle("/api/articles", {
+    method: "POST",
+    body: JSON.stringify(toArticlePayload(input)),
+  });
 }
 
 export async function updateArticle(id: string, input: UpdateArticleInput) {
-  await requestArticle(`/api/articles/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(toArticlePayload(input)) });
+  await requestArticle(`/api/articles/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(toArticlePayload(input)),
+  });
 }
 
 export async function deleteArticle(id: string) {
@@ -161,5 +226,9 @@ export function getArticleErrorFields(error: unknown): ArticleFieldErrors {
 }
 
 export function toArticleInput(input: CreateArticleInput): CreateArticleInput {
-  return { title: readString(input.title).trim(), description: readString(input.description).trim(), content: readString(input.content) };
+  return {
+    content: readString(input.content),
+    ...(typeof input.title === "string" ? { title: input.title.trim() } : {}),
+    ...(typeof input.description === "string" ? { description: input.description.trim() } : {}),
+  };
 }

@@ -24,6 +24,20 @@ function unwrapList(payload: unknown, resource: string): unknown[] {
   throw new Error(`A resposta de ${resource} não contém uma lista.`);
 }
 
+function readStepPayload(payload: unknown): Record<string, Record<string, unknown>> {
+  const root = isRecord(payload) ? payload : null;
+  const data = root && isRecord(root.data) ? root.data : root;
+  if (!isRecord(data)) throw new Error("A resposta de etapas de tags é inválida.");
+
+  const entries: Record<string, Record<string, unknown>> = {};
+  for (const key of ["step_1", "step_2", "step_3"]) {
+    const value = data[key];
+    if (isRecord(value)) entries[key] = value;
+  }
+
+  return entries;
+}
+
 function readId(value: unknown): string | null {
   if (typeof value === "string" || typeof value === "number") return String(value);
   if (isRecord(value)) {
@@ -52,7 +66,7 @@ function readGroupIds(value: Record<string, unknown>): string[] {
     const groupId = readId(value[key]);
     if (groupId) values.push(groupId);
   }
-  for (const key of ["step_name", "category_name", "group_name"]) {
+  for (const key of ["step_name", "category_name", "group_name", "category"]) {
     const groupName = value[key];
     if (typeof groupName === "string") values.push(groupName);
   }
@@ -65,28 +79,34 @@ function normalized(value: string) {
 
 export async function getTagSteps(signal?: AbortSignal): Promise<TagStep[]> {
   const payload = await requestJson<unknown>("/api/tags/steps", { signal });
-  return unwrapList(payload, "etapas de tags").map((value) => {
-    const id = readId(value);
-    const label = readLabel(value);
-    if (!id || !label) throw new Error("A resposta de uma etapa de tags está incompleta.");
-    const aliases = isRecord(value)
-      ? ["slug", "key", "value"].flatMap((key) =>
-          typeof value[key] === "string" || typeof value[key] === "number" ? [String(value[key])] : [],
-        )
-      : [];
-    return { id, label, aliases: [id, label, ...aliases].map(normalized) };
+  const steps = readStepPayload(payload);
+
+  return Object.entries(steps).map(([id, value]) => {
+    const label = typeof value.title === "string" ? value.title : null;
+    const category = typeof value.category === "string" ? value.category : null;
+    if (!label) throw new Error("A resposta de uma etapa de tags está incompleta.");
+
+    return {
+      id,
+      label,
+      aliases: [id, label, category]
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+        .map(normalized),
+    };
   });
 }
 
 export async function getTags(signal?: AbortSignal): Promise<TagOption[]> {
   const payload = await requestJson<unknown>("/api/tags", { signal });
-  return unwrapList(payload, "tags").map((value) => {
+  const items = unwrapList(payload, "tags");
+
+  return items.map((value) => {
     if (!isRecord(value)) throw new Error("A resposta contém uma tag inválida.");
 
     const id = readId(value);
     const name = readLabel(value);
     if (!id || !name) throw new Error("A resposta de uma tag está incompleta.");
 
-    return { id, name, groupIds: readGroupIds(value).map(normalized) };
+    return { id, name, groupIds: Array.from(new Set(readGroupIds(value).map(normalized))) };
   });
 }

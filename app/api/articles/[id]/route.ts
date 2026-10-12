@@ -14,6 +14,10 @@ export async function GET(request: NextRequest, context: ArticleRouteContext) {
   return proxyArticleRequest(request, context);
 }
 
+export async function PUT(request: NextRequest, context: ArticleRouteContext) {
+  return proxyArticleRequest(request, context);
+}
+
 export async function PATCH(request: NextRequest, context: ArticleRouteContext) {
   return proxyArticleRequest(request, context);
 }

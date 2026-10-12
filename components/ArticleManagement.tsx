@@ -25,7 +25,8 @@ export function ArticleManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [articleToDelete, setArticleToDelete] = useState<ArticleMetadata | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, user } = useAuth();
+  const canManageArticles = user?.role === "admin";
 
   const loadArticles = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
@@ -125,20 +126,22 @@ export function ArticleManagement() {
             {articles.map((article) => (
               <div key={article.id} className="flex flex-col gap-2">
                 <SearchResultCard {...article} />
-                <div className="flex flex-wrap gap-2">
-                  <Button component={Link} href={`/edit/${encodeURIComponent(article.id)}`} variant="outlined" size="small" aria-label={`Editar ${article.title}`}>
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    onClick={() => setArticleToDelete(article)}
-                    aria-label={`Excluir ${article.title}`}
-                  >
-                    Excluir
-                  </Button>
-                </div>
+                {canManageArticles ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button component={Link} href={`/edit/${encodeURIComponent(article.id)}`} variant="outlined" size="small" aria-label={`Editar ${article.title}`}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => setArticleToDelete(article)}
+                      aria-label={`Excluir ${article.title}`}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

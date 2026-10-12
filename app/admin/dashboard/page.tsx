@@ -1,9 +1,16 @@
+"use client";
+
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import { PageContainer } from "@/components/PageContainer";
 import { ArticleManagement } from "@/components/ArticleManagement";
 import { SectionWrapper } from "@/components/SectionWrapper";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Dashboard() {
+    const { user } = useAuth();
+    const canManageArticles = user?.role === "admin";
+
     return (
         <PageContainer>
             <SectionWrapper>
@@ -15,30 +22,38 @@ export default function Dashboard() {
                             Gerencie os conteúdos publicados e acompanhe os artigos mais recentes.
                         </p>
                     </div>
-                    <Button
-                        href="/edit/novo"
-                        variant="contained"
-                        sx={{
-                            alignSelf: "flex-start",
-                            backgroundColor: "var(--primary)",
-                            borderRadius: "6px",
-                            boxShadow: "none",
-                            color: "var(--primary-foreground)",
-                            flexShrink: 0,
-                            padding: "10px 18px",
-                            textTransform: "none",
-                            "&:hover": {
-                                backgroundColor: "var(--primary-hover)",
+                    {canManageArticles ? (
+                        <Button
+                            href="/edit/novo"
+                            variant="contained"
+                            sx={{
+                                alignSelf: "flex-start",
+                                backgroundColor: "var(--primary)",
+                                borderRadius: "6px",
                                 boxShadow: "none",
-                            },
-                            "@media (min-width: 640px)": {
-                                alignSelf: "auto",
-                            },
-                        }}
-                    >
-                        Criar Artigo
-                    </Button>
+                                color: "var(--primary-foreground)",
+                                flexShrink: 0,
+                                padding: "10px 18px",
+                                textTransform: "none",
+                                "&:hover": {
+                                    backgroundColor: "var(--primary-hover)",
+                                    boxShadow: "none",
+                                },
+                                "@media (min-width: 640px)": {
+                                    alignSelf: "auto",
+                                },
+                            }}
+                        >
+                            Criar Artigo
+                        </Button>
+                    ) : null}
                 </section>
+
+                {!canManageArticles ? (
+                    <Alert severity="warning" sx={{ mb: 3 }}>
+                        Você precisa de permissão de administrador para criar ou editar artigos.
+                    </Alert>
+                ) : null}
 
                 <div className="mb-6 flex items-baseline justify-between gap-4">
                     <h2 className="text-xl font-semibold text-foreground">Últimos artigos criados</h2>

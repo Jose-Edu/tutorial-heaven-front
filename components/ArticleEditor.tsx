@@ -7,7 +7,6 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import { useAuth } from "@/components/AuthProvider";
 import { TagSelectionForm } from "@/components/TagSelectionForm";
 import { PageContainer } from "@/components/PageContainer";
@@ -21,7 +20,7 @@ const MarkdownEditor = dynamic(() => import("@uiw/react-md-editor").then((module
 type ArticleForm = CreateArticleInput;
 type Feedback = { type: "success" | "error"; message: string } | null;
 
-const emptyForm: ArticleForm = { title: "", description: "", content: "" };
+const emptyForm: ArticleForm = { content: "" };
 
 function subscribeToTheme(onChange: () => void) {
   const observer = new MutationObserver(onChange);
@@ -47,7 +46,8 @@ export function ArticleEditor({ id }: { id: string }) {
   const [hasCreated, setHasCreated] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<unknown>(null);
-  const { status: authStatus, error: authError } = useAuth();
+  const { status: authStatus, error: authError, user } = useAuth();
+  const canManageArticles = user?.role === "admin";
   const isDark = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export function ArticleEditor({ id }: { id: string }) {
     async function loadArticle() {
       try {
         const article = await getArticle(id, controller.signal);
-        setForm({ title: article.title, description: article.description ?? "", content: article.content });
+        setForm({ content: article.content });
       } catch (error) {
         if (!controller.signal.aborted) setLoadError(error);
       } finally {
@@ -107,6 +107,10 @@ export function ArticleEditor({ id }: { id: string }) {
     return <PageContainer><SectionWrapper><Alert severity="error">{authError ?? "Não foi possível validar sua sessão."}</Alert></SectionWrapper></PageContainer>;
   }
 
+  if (authStatus === "authenticated" && !canManageArticles) {
+    return <PageContainer><SectionWrapper><Alert severity="warning">Você não tem permissão para criar ou editar artigos.</Alert></SectionWrapper></PageContainer>;
+  }
+
   return (
     <PageContainer>
       <SectionWrapper>
@@ -147,8 +151,9 @@ export function ArticleEditor({ id }: { id: string }) {
           ) : isLoading ? <div className="flex min-h-64 items-center justify-center" role="status" aria-label="Carregando artigo"><CircularProgress color="primary" /></div> : (
             <form onSubmit={saveArticle}>
               <Stack spacing={3}>
-                <TextField label="Título" value={form.title} onChange={(event) => updateField("title", event.target.value)} error={Boolean(fieldErrors.title)} helperText={fieldErrors.title?.[0]} required fullWidth />
-                <TextField label="Descrição" value={form.description} onChange={(event) => updateField("description", event.target.value)} error={Boolean(fieldErrors.description)} helperText={fieldErrors.description?.[0]} fullWidth multiline minRows={2} />
+                <Alert severity="info" sx={{ mb: 0 }}>
+                  Título e descrição são derivadas do conteúdo em Markdown do artigo, então o payload enviado à API usa apenas o campo <strong>content</strong>.
+                </Alert>
                 {fieldErrors.content?.[0] ? <Alert severity="error">{fieldErrors.content[0]}</Alert> : null}
                 <div data-color-mode={isDark ? "dark" : "light"} className={`article-editor overflow-hidden rounded-md border bg-card ${fieldErrors.content ? "border-red-600" : "border-border"}`}>
                   <MarkdownEditor value={form.content} onChange={(value) => updateField("content", value ?? "")} height={520} preview="edit" textareaProps={{ placeholder: "Escreva o conteúdo do artigo em Markdown..." }} />

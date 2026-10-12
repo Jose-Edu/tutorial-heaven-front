@@ -3,17 +3,25 @@ import { NextRequest, NextResponse } from "next/server";
 export const authTokenCookieName = "tutorial-heaven-access-token";
 
 function getBackendBaseUrl() {
-  const backendRoute = process.env.BACKEND_ROUTE?.trim();
+  const configuredRoute = (process.env.APP_URL ?? process.env.BACKEND_ROUTE ?? "").trim();
 
-  if (!backendRoute) {
-    throw new Error("BACKEND_ROUTE is not configured.");
+  if (!configuredRoute) {
+    throw new Error("APP_URL or BACKEND_ROUTE is not configured.");
   }
 
-  return backendRoute.replace(/\/+$/, "");
+  return configuredRoute.replace(/\/+$/, "").replace(/\/api$/, "");
+}
+
+function normalizeApiPath(pathname: string) {
+  const relativePath = pathname.trim();
+  if (!relativePath) return "/api";
+
+  const normalizedPath = `/${relativePath.replace(/^\/+/, "")}`;
+  return normalizedPath.startsWith("/api") ? normalizedPath : `/api${normalizedPath}`;
 }
 
 function buildBackendUrl(pathname: string) {
-  return `${getBackendBaseUrl()}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+  return `${getBackendBaseUrl()}${normalizeApiPath(pathname)}`;
 }
 
 function copyResponseHeaders(source: Response, target: NextResponse) {
@@ -29,7 +37,7 @@ function buildBackendHeaders(request: NextRequest) {
     accept: request.headers.get("accept") ?? "application/json",
     "content-type": request.headers.get("content-type") ?? "application/json",
     "x-requested-with": "XMLHttpRequest",
-    ...(token ? { authorization: `Bearer ${token}` } : {}),
+    ...(token ? { authorization: "Bearer " + token } : {}),
   };
 }
 
@@ -37,6 +45,7 @@ async function sendToBackend(request: NextRequest, backendPath: string) {
   const backendUrl = buildBackendUrl(`${backendPath}${request.nextUrl.search}`);
   const isBodyAllowed = request.method !== "GET" && request.method !== "HEAD";
   const body = isBodyAllowed ? await request.text() : undefined;
+
   return fetch(backendUrl, {
     method: request.method,
     headers: buildBackendHeaders(request),
@@ -117,9 +126,10 @@ export async function proxyAuthRequest(request: NextRequest, backendPath: string
         payload.token.length > 0
           ? payload.token
           : null;
+
       if (isLogin && !token) {
         return NextResponse.json(
-          { message: "A resposta de login não contém um token Bearer válido." },
+          { message: "A resposta de login não contém um token válido." },
           { status: 502 },
         );
       }
@@ -128,8 +138,11 @@ export async function proxyAuthRequest(request: NextRequest, backendPath: string
         typeof payload === "object" && payload !== null && "token" in payload
           ? Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "token"))
           : payload;
+
       proxiedResponse = NextResponse.json(safePayload, { status: response.status });
-      if (token) proxiedResponse.cookies.set(authTokenCookieName, token, authCookieOptions());
+      if (token) {
+        proxiedResponse.cookies.set(authTokenCookieName, token, authCookieOptions());
+      }
     } else {
       proxiedResponse = proxyResponse(response);
     }
