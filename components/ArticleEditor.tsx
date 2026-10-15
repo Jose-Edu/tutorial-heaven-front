@@ -7,9 +7,11 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
+import { useAuth } from "@/components/AuthProvider";
+import { TagSelectionForm } from "@/components/TagSelectionForm";
 import { PageContainer } from "@/components/PageContainer";
 import { SectionWrapper } from "@/components/SectionWrapper";
+import { HttpError } from "@/lib/http";
 import { createArticle, getArticle, getArticleErrorFields, toArticleInput, updateArticle, type ArticleFieldErrors, type CreateArticleInput } from "@/lib/articles";
 import "@uiw/react-md-editor/markdown-editor.css";
 
@@ -18,7 +20,7 @@ const MarkdownEditor = dynamic(() => import("@uiw/react-md-editor").then((module
 type ArticleForm = CreateArticleInput;
 type Feedback = { type: "success" | "error"; message: string } | null;
 
-const emptyForm: ArticleForm = { title: "", description: "", content: "" };
+const emptyForm: ArticleForm = { content: "" };
 
 function subscribeToTheme(onChange: () => void) {
   const observer = new MutationObserver(onChange);
@@ -41,6 +43,11 @@ export function ArticleEditor({ id }: { id: string }) {
   const [fieldErrors, setFieldErrors] = useState<ArticleFieldErrors>({});
   const [isLoading, setIsLoading] = useState(!isNewArticle);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasCreated, setHasCreated] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const { status: authStatus, error: authError, user } = useAuth();
+  const canManageArticles = user?.role === "admin";
   const isDark = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
@@ -50,9 +57,9 @@ export function ArticleEditor({ id }: { id: string }) {
     async function loadArticle() {
       try {
         const article = await getArticle(id, controller.signal);
-        setForm({ title: article.title, description: article.description ?? "", content: article.content });
+        setForm({ content: article.content });
       } catch (error) {
-        if (!controller.signal.aborted) setFeedback({ type: "error", message: error instanceof Error ? error.message : "Não foi possível carregar o artigo." });
+        if (!controller.signal.aborted) setLoadError(error);
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
       }
@@ -74,7 +81,10 @@ export function ArticleEditor({ id }: { id: string }) {
 
     try {
       const input = toArticleInput(form);
-      if (isNewArticle) await createArticle(input);
+      if (isNewArticle) {
+        await createArticle(input);
+        setHasCreated(true);
+      }
       else await updateArticle(id, input);
       setFeedback({ type: "success", message: "Artigo salvo com sucesso." });
     } catch (error) {
@@ -83,6 +93,22 @@ export function ArticleEditor({ id }: { id: string }) {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  if (authStatus === "loading") {
+    return <PageContainer><SectionWrapper><div className="flex min-h-64 items-center justify-center" role="status" aria-label="Verificando sessão"><CircularProgress color="primary" /></div></SectionWrapper></PageContainer>;
+  }
+
+  if (authStatus === "unauthenticated") {
+    return <PageContainer><SectionWrapper><Alert severity="warning" action={<Button component={Link} href="/">Entrar</Button>}>Entre na sua conta para criar ou editar artigos.</Alert></SectionWrapper></PageContainer>;
+  }
+
+  if (authStatus === "error") {
+    return <PageContainer><SectionWrapper><Alert severity="error">{authError ?? "Não foi possível validar sua sessão."}</Alert></SectionWrapper></PageContainer>;
+  }
+
+  if (authStatus === "authenticated" && !canManageArticles) {
+    return <PageContainer><SectionWrapper><Alert severity="warning">Você não tem permissão para criar ou editar artigos.</Alert></SectionWrapper></PageContainer>;
   }
 
   return (
@@ -100,18 +126,42 @@ export function ArticleEditor({ id }: { id: string }) {
             </Button>
           </div>
 
-          {feedback ? <Alert severity={feedback.type} onClose={() => setFeedback(null)} sx={{ mb: 3 }}>{feedback.message}</Alert> : null}
-          {isLoading ? <div className="flex min-h-64 items-center justify-center"><CircularProgress color="primary" /></div> : (
+          {feedback ? (
+            <Alert
+              severity={feedback.type}
+              onClose={() => setFeedback(null)}
+              action={feedback.type === "success" ? <Button component={Link} href="/admin/dashboard">Ver artigos</Button> : undefined}
+              sx={{ mb: 3 }}
+            >
+              {feedback.message}
+            </Alert>
+          ) : null}
+          {loadError ? (
+            <Alert severity="error">
+              {loadError instanceof HttpError && loadError.status === 404
+                ? "O artigo solicitado não foi encontrado."
+                : loadError instanceof HttpError && loadError.status === 403
+                  ? "Você não tem permissão para editar este artigo."
+                  : loadError instanceof HttpError && loadError.status === 401
+                    ? "Sua sessão expirou. Entre novamente para continuar."
+                    : loadError instanceof Error
+                      ? loadError.message
+                      : "Não foi possível carregar o artigo."}
+            </Alert>
+          ) : isLoading ? <div className="flex min-h-64 items-center justify-center" role="status" aria-label="Carregando artigo"><CircularProgress color="primary" /></div> : (
             <form onSubmit={saveArticle}>
               <Stack spacing={3}>
-                <TextField label="Título" value={form.title} onChange={(event) => updateField("title", event.target.value)} error={Boolean(fieldErrors.title)} helperText={fieldErrors.title?.[0]} required fullWidth />
-                <TextField label="Descrição" value={form.description} onChange={(event) => updateField("description", event.target.value)} error={Boolean(fieldErrors.description)} helperText={fieldErrors.description?.[0]} fullWidth multiline minRows={2} />
-                <div data-color-mode={isDark ? "dark" : "light"} className="article-editor overflow-hidden rounded-md border border-border bg-card">
+                <Alert severity="info" sx={{ mb: 0 }}>
+                  Título e descrição são derivadas do conteúdo em Markdown do artigo, então o payload enviado à API usa apenas o campo <strong>content</strong>.
+                </Alert>
+                {fieldErrors.content?.[0] ? <Alert severity="error">{fieldErrors.content[0]}</Alert> : null}
+                <div data-color-mode={isDark ? "dark" : "light"} className={`article-editor overflow-hidden rounded-md border bg-card ${fieldErrors.content ? "border-red-600" : "border-border"}`}>
                   <MarkdownEditor value={form.content} onChange={(value) => updateField("content", value ?? "")} height={520} preview="edit" textareaProps={{ placeholder: "Escreva o conteúdo do artigo em Markdown..." }} />
                 </div>
+                <TagSelectionForm selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
                 <div className="flex justify-end">
-                  <Button type="submit" variant="contained" disabled={isSaving || !form.content.trim()} sx={{ minWidth: 140, borderRadius: "6px", backgroundColor: "var(--primary)", boxShadow: "none", textTransform: "none", fontWeight: 700, "&:hover": { backgroundColor: "var(--accent-foreground)", boxShadow: "none" } }}>
-                    {isSaving ? <CircularProgress size={20} color="inherit" /> : "Salvar artigo"}
+                  <Button type="submit" variant="contained" disabled={isSaving || hasCreated || !form.content.trim()} sx={{ minWidth: 140, borderRadius: "6px", backgroundColor: "var(--primary)", boxShadow: "none", textTransform: "none", fontWeight: 700, "&:hover": { backgroundColor: "var(--primary-hover)", boxShadow: "none" } }}>
+                    {isSaving ? <CircularProgress size={20} color="inherit" /> : hasCreated ? "Artigo criado" : "Salvar artigo"}
                   </Button>
                 </div>
               </Stack>

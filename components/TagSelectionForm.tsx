@@ -1,163 +1,208 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getStoredAuthUser, setNeedsOnboarding } from "@/lib/mock-user-state";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useAuth } from "@/components/AuthProvider";
+import { getTagSteps, getTags, type TagOption, type TagStep } from "@/lib/tags";
+import { setNeedsOnboarding } from "@/lib/mock-user-state";
 
-interface Tag {
-  id: number;
-  name: string;
-  category: "area" | "technology" | "seniority";
-}
-
-const AVAILABLE_TAGS: Tag[] = [
-
-  { id: 1, name: "Frontend", category: "area" },
-  { id: 2, name: "Backend", category: "area" },
-  { id: 3, name: "Fullstack", category: "area" },
-
-  { id: 4, name: "React / Next.js", category: "technology" },
-  { id: 5, name: "Node.js / Express", category: "technology" },
-  { id: 6, name: "PHP / Laravel", category: "technology" },
-
-  { id: 7, name: "Júnior", category: "seniority" },
-  { id: 8, name: "Pleno", category: "seniority" },
-  { id: 9, name: "Sénior", category: "seniority" },
+const DEFAULT_STEPS: TagStep[] = [
+  { id: "step_1", label: "Área de Atuação", aliases: ["step_1", "area", "área de atuação"] },
+  { id: "step_2", label: "Tecnologias", aliases: ["step_2", "technology", "tecnologias"] },
+  { id: "step_3", label: "Nível de Experiência", aliases: ["step_3", "seniority", "nível de experiência"] },
 ];
 
-export default function TagSelectionForm() {
+const DEFAULT_TAGS: TagOption[] = [
+  { id: "1", name: "Frontend", groupIds: ["area"] },
+  { id: "2", name: "Backend", groupIds: ["area"] },
+  { id: "3", name: "Fullstack", groupIds: ["area"] },
+  { id: "4", name: "React / Next.js", groupIds: ["technology"] },
+  { id: "5", name: "Node.js / Express", groupIds: ["technology"] },
+  { id: "6", name: "PHP / Laravel", groupIds: ["technology"] },
+  { id: "7", name: "Júnior", groupIds: ["seniority"] },
+  { id: "8", name: "Pleno", groupIds: ["seniority"] },
+  { id: "9", name: "Sénior", groupIds: ["seniority"] },
+];
+
+function normalize(value: string) {
+  return value.trim().toLocaleLowerCase("pt-BR");
+}
+
+type TagSelectionFormProps = {
+  selectedTagIds?: string[];
+  onChange?: (nextIds: string[]) => void;
+};
+
+export function TagSelectionForm({ selectedTagIds: selectedTagIdsProp, onChange }: TagSelectionFormProps) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [internalSelectedTagIds, setInternalSelectedTagIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [steps, setSteps] = useState<TagStep[]>(DEFAULT_STEPS);
+  const [tags, setTags] = useState<TagOption[]>(DEFAULT_TAGS);
 
-  const steps = [
-    { title: "Área de Atuação", category: "area" },
-    { title: "Tecnologias", category: "technology" },
-    { title: "Nível de Experiência", category: "seniority" },
-  ];
+  const isControlled = Array.isArray(selectedTagIdsProp) && typeof onChange === "function";
+  const selectedTagIds = isControlled ? selectedTagIdsProp : internalSelectedTagIds;
 
-  const toggleTag = (id: number) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(id) ? prev.filter((tagId) => tagId !== id) : [...prev, id]
-    );
-  };
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/user/tags", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ tag_ids: selectedTagIds }),
-      });
+    async function loadTags() {
+      setIsLoadingData(true);
+      setLoadError(null);
 
-      if (response.ok) {
-        const currentUser = getStoredAuthUser();
-        setNeedsOnboarding(currentUser, false);
-        alert("Tags salvas com sucesso!");
-        router.push("/search");
-      } else {
-        alert("Erro ao salvar as tags.");
+      try {
+        const [apiSteps, apiTags] = await Promise.all([
+          getTagSteps(controller.signal),
+          getTags(controller.signal),
+        ]);
+
+        if (apiSteps.length > 0) {
+          setSteps(apiSteps);
+        }
+
+        if (apiTags.length > 0) {
+          setTags(apiTags);
+        }
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Não foi possível carregar as tags.");
+      } finally {
+        setIsLoadingData(false);
       }
-    } catch (error) {
-      console.error("Erro na requisição:", error);
+    }
+
+    void loadTags();
+
+    return () => controller.abort();
+  }, []);
+
+  const activeStep = steps[currentStep] ?? steps[0];
+
+  const matchingTags = useMemo(() => {
+    if (!activeStep) {
+      return [] as TagOption[];
+    }
+
+    const allowedAliases = new Set(activeStep.aliases.map(normalize));
+    return tags.filter((tag) => tag.groupIds.some((groupId) => allowedAliases.has(normalize(groupId))));
+  }, [activeStep, tags]);
+
+  function toggleTag(id: string) {
+    const nextIds = selectedTagIds.includes(id)
+      ? selectedTagIds.filter((tagId) => tagId !== id)
+      : [...selectedTagIds, id];
+
+    if (isControlled && onChange) {
+      onChange(nextIds);
+      return;
+    }
+
+    setInternalSelectedTagIds(nextIds);
+  }
+
+  async function handleSubmit() {
+    if (!user) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      setNeedsOnboarding(user, false);
+      alert("Preferências guardadas com sucesso!");
+      router.push("/search");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const currentCategory = steps[currentStep - 1].category;
-  const filteredTags = AVAILABLE_TAGS.filter(
-    (tag) => tag.category === currentCategory
-  );
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-surface border border-border rounded-xl shadow-md">
-      {/* Indicador de Passos */}
-      <div className="flex justify-between items-center mb-6">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          return (
-            <div key={step.category} className="flex items-center gap-2">
-              <span
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  currentStep === stepNumber
-                    ? "bg-primary text-primary-foreground"
-                    : currentStep > stepNumber
-                    ? "bg-muted text-foreground"
-                    : "bg-border text-muted"
+    <section className="rounded-lg border border-border bg-card p-5">
+      <h2 className="text-lg font-semibold text-foreground">Define as tuas tags</h2>
+      <p className="mt-1 text-sm text-muted">Seleciona as tags que melhor representam o teu perfil.</p>
+
+      {loadError ? <Alert severity="warning" sx={{ mt: 2 }}>{loadError}</Alert> : null}
+
+      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Etapas das tags">
+        {steps.map((step, index) => (
+          <Button
+            key={step.id}
+            type="button"
+            variant={currentStep === index ? "contained" : "outlined"}
+            onClick={() => setCurrentStep(index)}
+            aria-current={currentStep === index ? "step" : undefined}
+            sx={{ textTransform: "none" }}
+          >
+            {step.label}
+          </Button>
+        ))}
+      </div>
+
+      {isLoadingData ? (
+        <div className="mt-5 flex justify-center" role="status" aria-label="Carregando tags">
+          <CircularProgress size={24} />
+        </div>
+      ) : matchingTags.length > 0 ? (
+        <div className="mt-5 flex flex-wrap gap-3" role="group" aria-label={activeStep?.label ?? "Tags"}>
+          {matchingTags.map((tag) => {
+            const isSelected = selectedTagIds.includes(tag.id);
+
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => toggleTag(tag.id)}
+                className={`rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                  isSelected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-foreground hover:border-primary"
                 }`}
               >
-                {stepNumber}
-              </span>
-              <span className="text-xs text-muted font-medium hidden sm:inline">
-                {step.title}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                {tag.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <Alert severity="info" sx={{ mt: 3 }}>Não há tags nesta etapa.</Alert>
+      )}
 
-      {/* Título do Passo Atual */}
-      <h2 className="text-xl font-semibold text-foreground mb-4">
-        {steps[currentStep - 1].title}
-      </h2>
-
-      {/* Lista de Tags do Passo */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        {filteredTags.map((tag) => {
-          const isSelected = selectedTagIds.includes(tag.id);
-          return (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => toggleTag(tag.id)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                isSelected
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:border-primary"
-              }`}
-            >
-              {tag.name}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Botões de Navegação */}
-      <div className="flex justify-between items-center border-t border-border pt-4">
-        <button
+      <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+        <Button
           type="button"
-          onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 1))}
-          disabled={currentStep === 1}
-          className="px-4 py-2 text-sm text-muted hover:text-foreground disabled:opacity-40"
+          disabled={currentStep === 0}
+          onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
         >
           Voltar
-        </button>
+        </Button>
 
-        {currentStep < steps.length ? (
-          <button
+        {currentStep < steps.length - 1 ? (
+          <Button
             type="button"
-            onClick={() => setCurrentStep((prev) => prev + 1)}
-            className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90"
+            onClick={() => setCurrentStep((step) => Math.min(step + 1, steps.length - 1))}
           >
             Avançar
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting || selectedTagIds.length === 0}
-            className="px-5 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
+            variant="contained"
+            disabled={isSubmitting || (!isControlled && !user) || selectedTagIds.length === 0}
+            onClick={isControlled ? undefined : handleSubmit}
           >
-            {isSubmitting ? "A guardar..." : "Finalizar"}
-          </button>
+            {isControlled ? "Concluir seleção" : isSubmitting ? "A guardar..." : "Finalizar"}
+          </Button>
         )}
       </div>
-    </div>
+    </section>
   );
 }
+
+export default TagSelectionForm;
