@@ -53,14 +53,18 @@ export function AuthPanel() {
             password_confirmation: formState.password,
           });
 
-      const shouldGoToOnboarding = initializeNeedsOnboarding(authenticatedUser);
+      const redirectPath = authenticatedUser.role === "admin"
+        ? "/admin/dashboard"
+        : initializeNeedsOnboarding(authenticatedUser)
+          ? "/onboarding"
+          : "/search";
 
       setAlertState({
         type: "success",
         message: mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso.",
       });
       setFormState((current) => ({ ...current, password: "" }));
-      router.push(shouldGoToOnboarding ? "/onboarding" : "/search");
+      router.push(redirectPath);
     } catch (error) {
       const errors = getAuthFieldErrors(error);
       if (errors.password_confirmation && !errors.password) {
