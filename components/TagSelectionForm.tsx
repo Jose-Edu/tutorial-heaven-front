@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getStoredAuthUser, setNeedsOnboarding } from "@/lib/mock-user-state";
 
 interface Tag {
   id: number;
@@ -24,6 +26,7 @@ const AVAILABLE_TAGS: Tag[] = [
 ];
 
 export default function TagSelectionForm() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -53,7 +56,10 @@ export default function TagSelectionForm() {
       });
 
       if (response.ok) {
+        const currentUser = getStoredAuthUser();
+        setNeedsOnboarding(currentUser, false);
         alert("Tags salvas com sucesso!");
+        router.push("/search");
       } else {
         alert("Erro ao salvar as tags.");
       }

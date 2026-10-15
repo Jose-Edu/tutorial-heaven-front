@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -12,6 +13,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { AUTH_STORAGE_KEY, initializeNeedsOnboarding } from "@/lib/mock-user-state";
 
 type AuthMode = "login" | "register";
 
@@ -46,8 +48,6 @@ const emptyFormState: FormState = {
   email: "",
   password: "",
 };
-
-const authStorageKey = "tutorial-heaven-auth";
 
 async function readResponsePayload(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
@@ -86,6 +86,7 @@ function buildAuthHeaders(token?: string | null) {
 }
 
 export function AuthPanel() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [formState, setFormState] = useState<FormState>(emptyFormState);
   const [alertState, setAlertState] = useState<AlertState>(null);
@@ -94,7 +95,7 @@ export function AuthPanel() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const storedValue = window.localStorage.getItem(authStorageKey);
+    const storedValue = window.localStorage.getItem(AUTH_STORAGE_KEY);
 
     if (!storedValue) {
       return;
@@ -106,17 +107,17 @@ export function AuthPanel() {
       setAuthToken(parsedValue.token ?? null);
       setAuthUser(parsedValue.user ?? null);
     } catch {
-      window.localStorage.removeItem(authStorageKey);
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, []);
 
   useEffect(() => {
     if (authToken && authUser) {
-      window.localStorage.setItem(authStorageKey, JSON.stringify({ token: authToken, user: authUser }));
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: authToken, user: authUser }));
       return;
     }
 
-    window.localStorage.removeItem(authStorageKey);
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
   }, [authToken, authUser]);
 
   function updateField(field: keyof FormState, value: string) {
@@ -158,9 +159,12 @@ export function AuthPanel() {
         return;
       }
 
+      let shouldGoToOnboarding = false;
+
       if (responsePayload?.token && responsePayload.user) {
         setAuthToken(responsePayload.token);
         setAuthUser(responsePayload.user);
+        shouldGoToOnboarding = initializeNeedsOnboarding(responsePayload.user);
       }
 
       setAlertState({
@@ -168,6 +172,10 @@ export function AuthPanel() {
         message: responsePayload?.message ?? (mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso."),
       });
       setFormState((current) => ({ ...current, password: "" }));
+
+      if (responsePayload?.token && responsePayload.user) {
+        router.push(shouldGoToOnboarding ? "/onboarding" : "/search");
+      }
     } catch {
       setAlertState({
         type: "error",
