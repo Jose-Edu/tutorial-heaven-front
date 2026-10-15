@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState, type FormEvent } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -12,207 +12,79 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { getAuthFieldErrors } from "@/lib/auth-api";
+import { useAuth } from "@/components/AuthProvider";
 
 type AuthMode = "login" | "register";
+type AlertState = { type: "success" | "error"; message: string } | null;
+type FormState = { name: string; email: string; password: string };
 
-type AlertState = {
-  type: "success" | "error";
-  message: string;
-} | null;
-
-type AuthUser = {
-  id?: number;
-  name?: string;
-  email?: string;
-  [key: string]: unknown;
-};
-
-type FormState = {
-  name: string;
-  email: string;
-  password: string;
-};
-
-type AuthResponse = {
-  message?: string;
-  token?: string;
-  user?: AuthUser;
-  error?: string;
-  errors?: Record<string, string[]>;
-};
-
-const emptyFormState: FormState = {
-  name: "",
-  email: "",
-  password: "",
-};
-
-const authStorageKey = "tutorial-heaven-auth";
-
-async function readResponsePayload(response: Response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (!contentType.includes("application/json")) {
-    return null;
-  }
-
-  return (await response.json().catch(() => null)) as AuthResponse | null;
-}
-
-function getErrorMessage(payload: AuthResponse | null, fallback: string) {
-  if (payload?.message) {
-    return payload.message;
-  }
-
-  if (payload?.error) {
-    return payload.error;
-  }
-
-  const firstFieldError = payload?.errors ? Object.values(payload.errors).flat()[0] : undefined;
-
-  return firstFieldError ?? fallback;
-}
-
-function buildAuthHeaders(token?: string | null) {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-}
+const emptyFormState: FormState = { name: "", email: "", password: "" };
 
 export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [formState, setFormState] = useState<FormState>(emptyFormState);
   const [alertState, setAlertState] = useState<AlertState>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    const storedValue = window.localStorage.getItem(authStorageKey);
-
-    if (!storedValue) {
-      return;
-    }
-
-    try {
-      const parsedValue = JSON.parse(storedValue) as { token?: string; user?: AuthUser };
-
-      setAuthToken(parsedValue.token ?? null);
-      setAuthUser(parsedValue.user ?? null);
-    } catch {
-      window.localStorage.removeItem(authStorageKey);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (authToken && authUser) {
-      window.localStorage.setItem(authStorageKey, JSON.stringify({ token: authToken, user: authUser }));
-      return;
-    }
-
-    window.localStorage.removeItem(authStorageKey);
-  }, [authToken, authUser]);
+  const { user, status, error: authError, login, register, logout } = useAuth();
 
   function updateField(field: keyof FormState, value: string) {
     setFormState((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: [] }));
   }
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAlertState(null);
+    setFieldErrors({});
     setIsSubmitting(true);
 
     try {
-      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const payload = mode === "login"
-        ? {
-            email: formState.email,
-            password: formState.password,
-          }
-        : {
-            name: formState.name,
-            email: formState.email,
-            password: formState.password,
-            password_confirmation: formState.password,
-          };
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const responsePayload = await readResponsePayload(response);
-
-      if (!response.ok) {
-        setAlertState({ type: "error", message: getErrorMessage(responsePayload, response.statusText || "O servidor respondeu com um erro inesperado.") });
-        return;
-      }
-
-      if (responsePayload?.token && responsePayload.user) {
-        setAuthToken(responsePayload.token);
-        setAuthUser(responsePayload.user);
+      if (mode === "login") {
+        await login({ email: formState.email, password: formState.password });
+      } else {
+        await register({
+          name: formState.name,
+          email: formState.email,
+          password: formState.password,
+          password_confirmation: formState.password,
+        });
       }
 
       setAlertState({
         type: "success",
-        message: responsePayload?.message ?? (mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso."),
+        message: mode === "login" ? "Login realizado com sucesso." : "Cadastro realizado com sucesso.",
       });
       setFormState((current) => ({ ...current, password: "" }));
-    } catch {
+    } catch (error) {
+      const errors = getAuthFieldErrors(error);
+      if (errors.password_confirmation && !errors.password) {
+        errors.password = errors.password_confirmation;
+      }
+      setFieldErrors(errors);
       setAlertState({
         type: "error",
-        message: "Não foi possível conectar ao backend agora. Verifique o BACKEND_ROUTE.",
+        message: error instanceof Error ? error.message : "Não foi possível concluir a operação.",
       });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function logout() {
-    if (!authToken) {
-      setAuthUser(null);
-      setAuthToken(null);
-      return;
-    }
-
+  async function handleLogout() {
     setIsSubmitting(true);
     setAlertState(null);
 
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: buildAuthHeaders(authToken),
-      });
-
-      const responsePayload = await readResponsePayload(response);
-
-      if (!response.ok) {
-        setAlertState({ type: "error", message: getErrorMessage(responsePayload, response.statusText || "Não foi possível sair da sessão.") });
-        return;
-      }
-
-      setAuthUser(null);
-      setAuthToken(null);
+      await logout();
       setFormState(emptyFormState);
       setMode("login");
-      setAlertState({
-        type: "success",
-        message: responsePayload?.message ?? "Logout realizado com sucesso.",
-      });
-    } catch {
+      setAlertState({ type: "success", message: "Logout realizado com sucesso." });
+    } catch (error) {
       setAlertState({
         type: "error",
-        message: "Não foi possível encerrar a sessão agora.",
+        message: error instanceof Error ? error.message : "Não foi possível encerrar a sessão agora.",
       });
     } finally {
       setIsSubmitting(false);
@@ -222,7 +94,7 @@ export function AuthPanel() {
   return (
     <Card
       elevation={0}
-      className="overflow-hidden border border-border bg-surface/95 shadow-[0_24px_80px_rgba(24,24,27,0.08)] backdrop-blur"
+      className="overflow-hidden border border-border bg-surface shadow-sm"
       sx={{ borderRadius: 6 }}
     >
       <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
@@ -239,7 +111,7 @@ export function AuthPanel() {
             </Typography>
           </div>
 
-          {authUser ? (
+          {user ? (
             <Card variant="outlined" sx={{ borderRadius: 4, borderColor: "var(--border)", backgroundColor: "var(--surface-muted)" }}>
               <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
                 <Stack spacing={1.5}>
@@ -248,18 +120,18 @@ export function AuthPanel() {
                       Sessão ativa
                     </Typography>
                     <Typography variant="h6" sx={{ color: "var(--foreground)", fontWeight: 700 }}>
-                      {authUser.name ?? "Usuário autenticado"}
+                      {user.name ?? "Usuário autenticado"}
                     </Typography>
-                    {authUser.email ? (
+                    {user.email ? (
                       <Typography variant="body2" sx={{ color: "var(--muted)" }}>
-                        {authUser.email}
+                        {user.email}
                       </Typography>
                     ) : null}
                   </div>
 
                   <Button
                     variant="outlined"
-                    onClick={logout}
+                    onClick={handleLogout}
                     disabled={isSubmitting}
                     sx={{ borderRadius: "12px", textTransform: "none", fontWeight: 700 }}
                   >
@@ -275,6 +147,7 @@ export function AuthPanel() {
             onChange={(_, nextMode: AuthMode) => {
               setMode(nextMode);
               setAlertState(null);
+              setFieldErrors({});
             }}
             variant="fullWidth"
             textColor="primary"
@@ -286,6 +159,12 @@ export function AuthPanel() {
           </Tabs>
 
           {alertState ? <Alert severity={alertState.type}>{alertState.message}</Alert> : null}
+          {!alertState && status === "error" && authError ? <Alert severity="error">{authError}</Alert> : null}
+          {status === "loading" && !user ? (
+            <div className="flex justify-center" role="status" aria-label="Verificando sessão">
+              <CircularProgress size={22} />
+            </div>
+          ) : null}
 
           <form onSubmit={submitAuth}>
             <Stack spacing={2.25}>
@@ -294,6 +173,8 @@ export function AuthPanel() {
                   label="Nome"
                   value={formState.name}
                   onChange={(event) => updateField("name", event.target.value)}
+                  error={Boolean(fieldErrors.name)}
+                  helperText={fieldErrors.name?.[0]}
                   required
                   fullWidth
                   autoComplete="name"
@@ -314,6 +195,8 @@ export function AuthPanel() {
                 type="email"
                 value={formState.email}
                 onChange={(event) => updateField("email", event.target.value)}
+                error={Boolean(fieldErrors.email)}
+                helperText={fieldErrors.email?.[0]}
                 required
                 fullWidth
                 autoComplete="email"
@@ -333,6 +216,8 @@ export function AuthPanel() {
                 type="password"
                 value={formState.password}
                 onChange={(event) => updateField("password", event.target.value)}
+                error={Boolean(fieldErrors.password)}
+                helperText={fieldErrors.password?.[0]}
                 required
                 fullWidth
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -351,13 +236,8 @@ export function AuthPanel() {
                 type="submit"
                 variant="contained"
                 size="large"
-                disabled={isSubmitting}
-                sx={{
-                  borderRadius: "14px",
-                  py: 1.5,
-                  fontWeight: 700,
-                  textTransform: "none",
-                }}
+                disabled={isSubmitting || status === "loading"}
+                sx={{ borderRadius: "14px", py: 1.5, fontWeight: 700, textTransform: "none" }}
               >
                 {isSubmitting ? <CircularProgress size={22} color="inherit" /> : mode === "login" ? "Entrar" : "Criar conta"}
               </Button>
