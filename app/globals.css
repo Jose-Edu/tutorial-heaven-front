@@ -233,7 +233,7 @@ body {
 .article-content img { display: block; }
 .article-content ::selection { background: var(--accent); color: var(--accent-foreground); }
 
-.article-editor [data-color-mode="dark"] {
+.article-editor[data-color-mode="dark"] {
   color-scheme: dark;
 }
 
@@ -242,10 +242,40 @@ body {
   color: inherit;
 }
 
-.dark .article-editor,
-.dark .article-editor .w-md-editor,
-.dark .article-editor .w-md-editor-content,
-.dark .article-editor .w-md-editor-toolbar {
+.article-editor[data-color-mode="dark"],
+.article-editor[data-color-mode="dark"] .w-md-editor,
+.article-editor[data-color-mode="dark"] .w-md-editor-content,
+.article-editor[data-color-mode="dark"] .w-md-editor-toolbar {
+  --color-prettylights-syntax-comment: #8b949e;
+  --color-prettylights-syntax-constant: #79c0ff;
+  --color-prettylights-syntax-entity: #d2a8ff;
+  --color-prettylights-syntax-storage-modifier-import: #c9d1d9;
+  --color-prettylights-syntax-entity-tag: #7ee787;
+  --color-prettylights-syntax-keyword: #ff7b72;
+  --color-prettylights-syntax-string: #a5d6ff;
+  --color-prettylights-syntax-variable: #ffa657;
+  --color-prettylights-syntax-brackethighlighter-unmatched: #f85149;
+  --color-prettylights-syntax-invalid-illegal-text: #f0f6fc;
+  --color-prettylights-syntax-invalid-illegal-bg: #8e1519;
+  --color-prettylights-syntax-carriage-return-text: #f0f6fc;
+  --color-prettylights-syntax-carriage-return-bg: #b62324;
+  --color-prettylights-syntax-string-regexp: #7ee787;
+  --color-prettylights-syntax-markup-list: #f2cc60;
+  --color-prettylights-syntax-markup-heading: #79c0ff;
+  --color-prettylights-syntax-markup-italic: #c9d1d9;
+  --color-prettylights-syntax-markup-bold: #c9d1d9;
+  --color-prettylights-syntax-markup-deleted-text: #ffdcd7;
+  --color-prettylights-syntax-markup-deleted-bg: #67060c;
+  --color-prettylights-syntax-markup-inserted-text: #aff5b4;
+  --color-prettylights-syntax-markup-inserted-bg: #033a16;
+  --color-prettylights-syntax-markup-changed-text: #ffdfb6;
+  --color-prettylights-syntax-markup-changed-bg: #5a1e02;
+  --color-prettylights-syntax-markup-ignored-text: #c9d1d9;
+  --color-prettylights-syntax-markup-ignored-bg: #1158c7;
+  --color-prettylights-syntax-meta-diff-range: #d2a8ff;
+  --color-prettylights-syntax-brackethighlighter-angle: #8b949e;
+  --color-prettylights-syntax-sublimelinter-gutter-mark: #484f58;
+  --color-prettylights-syntax-constant-other-reference-link: #a5d6ff;
   --color-fg-default: var(--foreground);
   --color-canvas-default: var(--surface);
   --color-canvas-subtle: var(--surface-muted);
@@ -259,35 +289,43 @@ body {
   border-color: var(--border);
 }
 
-.dark .article-editor .w-md-editor-text-pre,
-.dark .article-editor .w-md-editor-text-input,
-.dark .article-editor .w-md-editor-text,
-.dark .article-editor .w-md-editor-preview {
+.article-editor[data-color-mode="dark"] .w-md-editor-text-pre,
+.article-editor[data-color-mode="dark"] .w-md-editor-text-input,
+.article-editor[data-color-mode="dark"] .w-md-editor-text,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview {
   background: var(--surface);
   color: var(--foreground);
 }
 
-.dark .article-editor .w-md-editor-toolbar button {
+.article-editor[data-color-mode="dark"] .w-md-editor-text-pre > code {
+  color: var(--foreground);
+}
+
+.article-editor[data-color-mode="dark"] .w-md-editor-text-input {
+  caret-color: var(--foreground);
+}
+
+.article-editor[data-color-mode="dark"] .w-md-editor-toolbar button {
   color: var(--muted);
 }
 
-.dark .article-editor .w-md-editor-toolbar button:hover,
-.dark .article-editor .w-md-editor-toolbar button:focus-visible {
+.article-editor[data-color-mode="dark"] .w-md-editor-toolbar button:hover,
+.article-editor[data-color-mode="dark"] .w-md-editor-toolbar button:focus-visible {
   color: var(--foreground);
   background: var(--surface-muted);
 }
 
-.dark .article-editor .w-md-editor-toolbar button.active {
+.article-editor[data-color-mode="dark"] .w-md-editor-toolbar button.active {
   color: var(--primary);
   background: var(--surface-muted);
 }
 
-.dark .article-editor .w-md-editor-preview h1,
-.dark .article-editor .w-md-editor-preview h2,
-.dark .article-editor .w-md-editor-preview h3,
-.dark .article-editor .w-md-editor-preview h4,
-.dark .article-editor .w-md-editor-preview p,
-.dark .article-editor .w-md-editor-preview li {
+.article-editor[data-color-mode="dark"] .w-md-editor-preview h1,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview h2,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview h3,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview h4,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview p,
+.article-editor[data-color-mode="dark"] .w-md-editor-preview li {
   color: var(--foreground);
 }
 

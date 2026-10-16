@@ -19,7 +19,7 @@ export function ArticleViewer({ article }: ArticleViewerProps) {
     <article className="mx-auto w-full max-w-4xl animate-float-in">
       <header className="border-b border-border pb-8">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Artigo</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{article.title}</h1>
+        <h1 className="mt-3 min-w-0 break-words [overflow-wrap:anywhere] text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{article.title}</h1>
         {article.description ? <p className="mt-5 max-w-3xl text-lg leading-8 text-muted">{article.description}</p> : null}
       </header>
 

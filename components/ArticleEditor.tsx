@@ -155,7 +155,7 @@ export function ArticleEditor({ id }: { id: string }) {
                   Título e descrição são derivadas do conteúdo em Markdown do artigo, então o payload enviado à API usa apenas o campo <strong>content</strong>.
                 </Alert>
                 {fieldErrors.content?.[0] ? <Alert severity="error">{fieldErrors.content[0]}</Alert> : null}
-                <div data-color-mode={isDark ? "dark" : "light"} className={`article-editor overflow-hidden rounded-md border bg-card ${fieldErrors.content ? "border-red-600" : "border-border"}`}>
+                <div data-color-mode={isDark ? null : "light"} className={`article-editor overflow-hidden rounded-md border bg-card ${fieldErrors.content ? "border-red-600" : "border-border"}`}>
                   <MarkdownEditor value={form.content} onChange={(value) => updateField("content", value ?? "")} height={520} preview="edit" textareaProps={{ placeholder: "Escreva o conteúdo do artigo em Markdown..." }} />
                 </div>
                 <TagSelectionForm selectedTagIds={selectedTagIds} onChange={setSelectedTagIds} />
