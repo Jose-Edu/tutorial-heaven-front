@@ -50,7 +50,7 @@ export function SearchBar() {
           borderRadius: "6px",
           backgroundColor: "var(--surface)",
           color: "var(--foreground)",
-          "& fieldset": { borderColor: "var(--border)" },
+          "& fieldset": { borderColor: "var(--border-strong)" },
           "&:hover fieldset": { borderColor: "var(--primary)" },
           "&.Mui-focused fieldset": { borderColor: "var(--ring)" },
         },
@@ -67,7 +67,7 @@ export function SearchBar() {
           ),
           endAdornment: query ? (
             <InputAdornment position="end">
-              <IconButton aria-label="Limpar busca" size="small" onClick={() => setQuery("")}>
+              <IconButton aria-label="Limpar busca" size="small" onClick={() => setQuery("")} sx={{ color: "var(--foreground)" }}>
                 <ClearIcon fontSize="small" />
               </IconButton>
             </InputAdornment>

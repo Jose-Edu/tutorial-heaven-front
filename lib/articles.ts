@@ -182,7 +182,7 @@ function payloadRows(payload: unknown): unknown[] {
 }
 
 export async function getArticles(signal?: AbortSignal) {
-  const payload = await requestArticle("/api/articles", { signal });
+  const payload = await requestArticle("/articles", { signal });
   return payloadRows(payload).map((row) => {
     const article = normalizeArticle(row);
     if (!article) throw new Error("A resposta de um artigo da listagem está incompleta.");
@@ -197,28 +197,28 @@ export async function getArticles(signal?: AbortSignal) {
 }
 
 export async function getArticle(id: string, signal?: AbortSignal) {
-  const payload = await requestArticle(`/api/articles/${encodeURIComponent(id)}`, { signal });
+  const payload = await requestArticle(`/articles/${encodeURIComponent(id)}`, { signal });
   const article = normalizeArticle(payload);
   if (!article) throw new Error("A resposta do artigo está incompleta.");
   return article;
 }
 
 export async function createArticle(input: CreateArticleInput) {
-  await requestArticle("/api/articles", {
+  await requestArticle("/articles", {
     method: "POST",
     body: JSON.stringify(toArticlePayload(input)),
   });
 }
 
 export async function updateArticle(id: string, input: UpdateArticleInput) {
-  await requestArticle(`/api/articles/${encodeURIComponent(id)}`, {
+  await requestArticle(`/articles/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(toArticlePayload(input)),
   });
 }
 
 export async function deleteArticle(id: string) {
-  await requestArticle(`/api/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await requestArticle(`/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export function getArticleErrorFields(error: unknown): ArticleFieldErrors {

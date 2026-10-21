@@ -15,6 +15,7 @@
   --accent: #eff6ff;
   --accent-foreground: #1d4ed8;
   --border: #d4d4d8;
+  --border-strong: #a1a1aa;
   --ring: #2563eb;
   --danger: #b91c1c;
   --success: #166534;
@@ -52,13 +53,14 @@
   --surface-muted: #27272a;
   --card: #18181b;
   --card-foreground: #f4f4f5;
-  --primary: #1d4ed8;
-  --primary-hover: #1e40af;
-  --primary-foreground: #ffffff;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-foreground: #0b1120;
   --muted: #c4c4cc;
   --accent: #172554;
   --accent-foreground: #dbeafe;
   --border: #3f3f46;
+  --border-strong: #71717a;
   --ring: #93c5fd;
   --danger: #fca5a5;
   --success: #86efac;
@@ -91,43 +93,81 @@ body {
   text-transform: none;
 }
 
-.MuiButton-contained.MuiButton-colorPrimary {
+.MuiButton-root.MuiButton-contained.MuiButton-colorPrimary {
   background-color: var(--primary);
   color: var(--primary-foreground);
 }
 
-.MuiButton-contained.MuiButton-colorPrimary:hover {
+.MuiButton-root.MuiButton-contained.MuiButton-colorPrimary:hover {
   background-color: var(--primary-hover);
+  color: var(--primary-foreground);
 }
 
-.MuiButton-contained.MuiButton-colorPrimary.Mui-disabled {
+.MuiButton-root.MuiButton-contained.MuiButton-colorPrimary.Mui-disabled,
+.MuiButton-root.MuiButton-contained.MuiButton-colorPrimary.Mui-disabled:hover {
   background-color: var(--surface-muted);
   color: var(--muted);
 }
 
-.MuiButton-outlined {
-  border-color: var(--border);
+.MuiButton-root.MuiButton-text.MuiButton-colorPrimary {
+  color: var(--primary);
+}
+
+.MuiButton-root.MuiButton-text.MuiButton-colorPrimary:hover {
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.MuiButton-root.MuiButton-text.MuiButton-colorPrimary.Mui-disabled,
+.MuiButton-root.MuiButton-text.MuiButton-colorPrimary.Mui-disabled:hover {
+  background-color: transparent;
+  color: var(--muted);
+}
+
+.MuiButton-root.MuiButton-outlined {
+  border-color: var(--border-strong);
   color: var(--foreground);
 }
 
-.MuiButton-outlined:hover {
+.MuiButton-root.MuiButton-outlined:hover {
   border-color: var(--ring);
   background-color: var(--surface-muted);
+  color: var(--foreground);
 }
 
-.MuiButton-outlined.Mui-disabled {
+.MuiButton-root.MuiButton-outlined.Mui-disabled,
+.MuiButton-root.MuiButton-outlined.Mui-disabled:hover {
   border-color: var(--border);
+  background-color: transparent;
   color: var(--muted);
 }
 
-.MuiButton-contained.MuiButton-colorError {
+.MuiButton-root.MuiButton-outlined.MuiButton-colorError {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.MuiButton-root.MuiButton-outlined.MuiButton-colorError:hover {
+  border-color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.MuiButton-root.MuiButton-contained.MuiButton-colorError {
   background-color: var(--danger);
   color: var(--background);
 }
 
-.MuiButton-contained.MuiButton-colorError:hover {
+.MuiButton-root.MuiButton-contained.MuiButton-colorError:hover {
   background-color: var(--danger);
   filter: brightness(0.85);
+}
+
+.MuiCircularProgress-root.MuiCircularProgress-colorPrimary {
+  color: var(--primary);
+}
+
+.MuiAlert-action .MuiButton-root {
+  color: inherit;
 }
 
 .MuiAlert-root {
@@ -136,19 +176,19 @@ body {
   font-weight: 500;
 }
 
-.MuiAlert-standardError {
+.MuiAlert-root.MuiAlert-standardError {
   color: var(--danger);
 }
 
-.MuiAlert-standardSuccess {
+.MuiAlert-root.MuiAlert-standardSuccess {
   color: var(--success);
 }
 
-.MuiAlert-standardWarning {
+.MuiAlert-root.MuiAlert-standardWarning {
   color: var(--warning);
 }
 
-.MuiAlert-standardInfo {
+.MuiAlert-root.MuiAlert-standardInfo {
   color: var(--accent-foreground);
 }
 
@@ -184,7 +224,7 @@ body {
 }
 
 .dark .MuiOutlinedInput-notchedOutline {
-  border-color: var(--border);
+  border-color: var(--border-strong);
 }
 
 .dark .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
@@ -202,6 +242,36 @@ body {
 
 .dark .MuiInputLabel-root.Mui-focused {
   color: var(--ring);
+}
+
+.dark .MuiIconButton-root {
+  color: var(--foreground);
+}
+
+.dark .MuiIconButton-root:hover {
+  background-color: var(--surface-muted);
+}
+
+.dark .MuiTabs-root .MuiTab-root {
+  color: var(--muted);
+}
+
+.dark .MuiTabs-root .MuiTab-root.Mui-selected {
+  color: var(--primary);
+}
+
+.dark .MuiTabs-indicator {
+  background-color: var(--primary);
+}
+
+.dark .MuiSkeleton-root {
+  background-color: var(--surface-muted);
+}
+
+.dark .MuiDivider-root,
+.dark .MuiDivider-root::before,
+.dark .MuiDivider-root::after {
+  border-color: var(--border-strong);
 }
 
 .article-content h2,

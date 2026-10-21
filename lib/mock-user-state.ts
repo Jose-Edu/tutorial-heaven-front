@@ -30,6 +30,10 @@ function getUserStorageKey(user: MockAuthUser | null | undefined) {
   return "anonymous";
 }
 
+function hasAssignedTags(user: MockAuthUser | null | undefined) {
+  return Array.isArray(user?.tags) && user.tags.length > 0;
+}
+
 function readUserFlagsStore(): UserFlagsStore {
   if (!canUseStorage()) {
     return {};
@@ -94,13 +98,16 @@ export function initializeNeedsOnboarding(user: MockAuthUser | null | undefined)
     return storedValue;
   }
 
+  // Quem já tem tags atribuídas no backend não precisa refazer o onboarding.
+  const needsOnboarding = !hasAssignedTags(user);
+
   store[userKey] = {
     ...store[userKey],
-    needsOnboarding: true,
+    needsOnboarding,
   };
 
   writeUserFlagsStore(store);
-  return true;
+  return needsOnboarding;
 }
 
 export function setNeedsOnboarding(user: MockAuthUser | null | undefined, value: boolean) {

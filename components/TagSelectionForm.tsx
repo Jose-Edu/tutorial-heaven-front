@@ -6,7 +6,7 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useAuth } from "@/components/AuthProvider";
-import { getTagSteps, getTags, type TagOption, type TagStep } from "@/lib/tags";
+import { getTagSteps, getTags, syncUserTags, type TagOption, type TagStep } from "@/lib/tags";
 import { setNeedsOnboarding } from "@/lib/mock-user-state";
 
 const DEFAULT_STEPS: TagStep[] = [
@@ -38,12 +38,16 @@ type TagSelectionFormProps = {
 
 export function TagSelectionForm({ selectedTagIds: selectedTagIdsProp, onChange }: TagSelectionFormProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, patchUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
-  const [internalSelectedTagIds, setInternalSelectedTagIds] = useState<string[]>([]);
+  // No onboarding as tags já atribuídas ao usuário entram pré-selecionadas.
+  const [internalSelectedTagIds, setInternalSelectedTagIds] = useState<string[]>(() =>
+    (user?.tags ?? []).map((tag) => String(tag.id)),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [steps, setSteps] = useState<TagStep[]>(DEFAULT_STEPS);
   const [tags, setTags] = useState<TagOption[]>(DEFAULT_TAGS);
 
@@ -112,11 +116,17 @@ export function TagSelectionForm({ selectedTagIds: selectedTagIdsProp, onChange 
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
+      const syncedTags = await syncUserTags(selectedTagIds);
+
+      patchUser({ tags: syncedTags });
+
       setNeedsOnboarding(user, false);
-      alert("Preferências guardadas com sucesso!");
       router.push("/search");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Não foi possível guardar as tags.");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,6 +138,7 @@ export function TagSelectionForm({ selectedTagIds: selectedTagIdsProp, onChange 
       <p className="mt-1 text-sm text-muted">Seleciona as tags que melhor representam o teu perfil.</p>
 
       {loadError ? <Alert severity="warning" sx={{ mt: 2 }}>{loadError}</Alert> : null}
+      {submitError ? <Alert severity="error" sx={{ mt: 2 }}>{submitError}</Alert> : null}
 
       <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Etapas das tags">
         {steps.map((step, index) => (

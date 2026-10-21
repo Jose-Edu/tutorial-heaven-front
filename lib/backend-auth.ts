@@ -9,19 +9,18 @@ function getBackendBaseUrl() {
     throw new Error("APP_URL or BACKEND_ROUTE is not configured.");
   }
 
-  return configuredRoute.replace(/\/+$/, "").replace(/\/api$/, "");
+  return configuredRoute.replace(/\/+$/, "");
 }
 
-function normalizeApiPath(pathname: string) {
+function normalizeBackendPath(pathname: string) {
   const relativePath = pathname.trim();
-  if (!relativePath) return "/api";
+  if (!relativePath) return "/";
 
-  const normalizedPath = `/${relativePath.replace(/^\/+/, "")}`;
-  return normalizedPath.startsWith("/api") ? normalizedPath : `/api${normalizedPath}`;
+  return `/${relativePath.replace(/^\/+/, "")}`;
 }
 
 function buildBackendUrl(pathname: string) {
-  return `${getBackendBaseUrl()}${normalizeApiPath(pathname)}`;
+  return `${getBackendBaseUrl()}${normalizeBackendPath(pathname)}`;
 }
 
 function copyResponseHeaders(source: Response, target: NextResponse) {

@@ -190,7 +190,7 @@ export function AuthPanel() {
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "14px",
                       backgroundColor: "var(--surface)",
-                      "& fieldset": { borderColor: "var(--border)" },
+                      "& fieldset": { borderColor: "var(--border-strong)" },
                       "&:hover fieldset": { borderColor: "var(--primary)" },
                       "&.Mui-focused fieldset": { borderColor: "var(--ring)" },
                     },
@@ -212,7 +212,7 @@ export function AuthPanel() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "14px",
                     backgroundColor: "var(--surface)",
-                    "& fieldset": { borderColor: "var(--border)" },
+                    "& fieldset": { borderColor: "var(--border-strong)" },
                     "&:hover fieldset": { borderColor: "var(--primary)" },
                     "&.Mui-focused fieldset": { borderColor: "var(--ring)" },
                   },
@@ -233,7 +233,7 @@ export function AuthPanel() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "14px",
                     backgroundColor: "var(--surface)",
-                    "& fieldset": { borderColor: "var(--border)" },
+                    "& fieldset": { borderColor: "var(--border-strong)" },
                     "&:hover fieldset": { borderColor: "var(--primary)" },
                     "&.Mui-focused fieldset": { borderColor: "var(--ring)" },
                   },
@@ -250,7 +250,7 @@ export function AuthPanel() {
                 {isSubmitting ? <CircularProgress size={22} color="inherit" /> : mode === "login" ? "Entrar" : "Criar conta"}
               </Button>
 
-              <Divider sx={{ borderColor: "var(--border)" }} />
+              <Divider sx={{ borderColor: "var(--border-strong)" }} />
 
               <Typography variant="body2" sx={{ color: "var(--muted)", lineHeight: 1.7 }}>
                 {mode === "login"

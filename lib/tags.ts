@@ -12,6 +12,11 @@ export type TagStep = {
   aliases: string[];
 };
 
+export type UserTag = {
+  id: number | string;
+  name?: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -78,7 +83,7 @@ function normalized(value: string) {
 }
 
 export async function getTagSteps(signal?: AbortSignal): Promise<TagStep[]> {
-  const payload = await requestJson<unknown>("/api/tags/steps", { signal });
+  const payload = await requestJson<unknown>("/tags/steps", { signal });
   const steps = readStepPayload(payload);
 
   return Object.entries(steps).map(([id, value]) => {
@@ -97,7 +102,7 @@ export async function getTagSteps(signal?: AbortSignal): Promise<TagStep[]> {
 }
 
 export async function getTags(signal?: AbortSignal): Promise<TagOption[]> {
-  const payload = await requestJson<unknown>("/api/tags", { signal });
+  const payload = await requestJson<unknown>("/tags", { signal });
   const items = unwrapList(payload, "tags");
 
   return items.map((value) => {
@@ -109,4 +114,45 @@ export async function getTags(signal?: AbortSignal): Promise<TagOption[]> {
 
     return { id, name, groupIds: Array.from(new Set(readGroupIds(value).map(normalized))) };
   });
+}
+
+/**
+ * Lê as tags de um payload de usuário (`{ tags: [...] }`, `{ data: { user: { tags } } }`
+ * ou `{ data: { tags } }`) e devolve sempre uma lista.
+ */
+export function readUserTags(payload: unknown): UserTag[] {
+  if (!isRecord(payload)) return [];
+
+  const data = isRecord(payload.data) ? payload.data : payload;
+  const user = isRecord(data) && isRecord(data.user) ? data.user : data;
+  const tags = isRecord(user) && Array.isArray(user.tags) ? user.tags : [];
+
+  return tags
+    .filter(isRecord)
+    .filter((tag) => typeof tag.id === "number" || typeof tag.id === "string")
+    .map((tag) => ({
+      id: tag.id as number | string,
+      ...(typeof tag.name === "string" ? { name: tag.name } : {}),
+    }));
+}
+
+/**
+ * Envia as tags selecionadas no onboarding para o backend, que fica responsável
+ * por vinculá-las ao usuário autenticado, e devolve as tags já atribuídas.
+ */
+export async function syncUserTags(tagIds: string[]): Promise<UserTag[]> {
+  const numericTagIds = tagIds
+    .map((tagId) => Number(tagId))
+    .filter((tagId) => Number.isInteger(tagId) && tagId > 0);
+
+  if (numericTagIds.length === 0) {
+    throw new Error("Seleciona pelo menos uma tag antes de guardar.");
+  }
+
+  const payload = await requestJson<unknown>("/onboarding/tags", {
+    method: "POST",
+    body: JSON.stringify({ tag_ids: numericTagIds }),
+  });
+
+  return readUserTags(payload);
 }

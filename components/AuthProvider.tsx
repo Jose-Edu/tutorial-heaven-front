@@ -33,6 +33,7 @@ type AuthContextValue = {
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<AuthUser>;
+  patchUser: (patch: Partial<AuthUser>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -120,9 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const patchUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   const value = useMemo(
-    () => ({ user, status, error, login, register, logout, refreshUser }),
-    [user, status, error, login, register, logout, refreshUser],
+    () => ({ user, status, error, login, register, logout, refreshUser, patchUser }),
+    [user, status, error, login, register, logout, refreshUser, patchUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
