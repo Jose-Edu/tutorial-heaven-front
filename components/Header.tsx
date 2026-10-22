@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SearchBar } from "@/components/SearchBar";
+import { DashboardLink } from "@/components/DashboardLink";
 
 export function Header() {
   return (
@@ -12,7 +13,10 @@ export function Header() {
         <div className="flex min-w-0 flex-1 justify-end gap-2 md:justify-center">
           <SearchBar />
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <DashboardLink />
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );

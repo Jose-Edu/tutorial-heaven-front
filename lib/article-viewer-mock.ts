@@ -6,6 +6,10 @@ export const articleViewerMock: Article = {
   description: "Fixture visual para validar tipografia, tabelas, código, listas e estados de contraste do ArticleViewer.",
   createdAt: "2026-09-24T09:00:00.000Z",
   updatedAt: "2026-09-24T12:30:00.000Z",
+  tags: [
+    { id: 1, name: "Frontend" },
+    { id: 2, name: "Documentação" },
+  ],
   content: `# Escrevendo documentação que ajuda de verdade
 
 Uma boa documentação reduz dúvidas e deixa decisões técnicas **fáceis de encontrar**. Ela pode combinar texto, exemplos e links sem perder ritmo.

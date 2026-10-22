@@ -2,9 +2,13 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
-import type { ArticleMetadata } from "@/lib/articles";
+import type { ArticleMetadata, ArticleTag } from "@/lib/articles";
 
-export function SearchResultCard({ id, title }: ArticleMetadata) {
+type SearchResultCardProps = ArticleMetadata & {
+  tags?: ArticleTag[];
+};
+
+export function SearchResultCard({ id, title, description, tags }: SearchResultCardProps) {
   return (
     <Card
       className="flex h-full min-w-0 flex-col overflow-hidden border border-border bg-card"
@@ -24,6 +28,28 @@ export function SearchResultCard({ id, title }: ArticleMetadata) {
         >
           {title}
         </Typography>
+        {description ? (
+          <Typography
+            component="p"
+            variant="body2"
+            className="leading-6"
+            sx={{ color: "var(--muted)", minWidth: 0, overflowWrap: "anywhere" }}
+          >
+            {description}
+          </Typography>
+        ) : null}
+        {tags && tags.length > 0 ? (
+          <ul className="flex flex-wrap gap-2" aria-label="Tags do artigo">
+            {tags.map((tag) => (
+              <li
+                key={String(tag.id)}
+                className="rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-medium text-muted"
+              >
+                {tag.name ?? `#${tag.id}`}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <Button
           href={`/page/${encodeURIComponent(id)}`}
           variant="contained"

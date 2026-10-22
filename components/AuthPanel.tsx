@@ -57,7 +57,7 @@ export function AuthPanel() {
         ? "/admin/dashboard"
         : initializeNeedsOnboarding(authenticatedUser)
           ? "/onboarding"
-          : "/search";
+          : "/dashboard";
 
       setAlertState({
         type: "success",

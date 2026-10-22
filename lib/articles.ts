@@ -1,11 +1,17 @@
 import { HttpError, requestJson } from "@/lib/http";
 
+export type ArticleTag = {
+  id: number | string;
+  name?: string;
+};
+
 export type ArticleMetadata = {
   id: string;
   title: string;
   description: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  tags: ArticleTag[];
 };
 
 export type Article = ArticleMetadata & {
@@ -16,6 +22,7 @@ export type CreateArticleInput = {
   content: string;
   title?: string;
   description?: string;
+  tagIds?: number[];
 };
 
 export type UpdateArticleInput = CreateArticleInput;
@@ -128,6 +135,20 @@ export function decodeMarkdownBase64(encoded: string) {
   }
 }
 
+function readTags(value: unknown): ArticleTag[] {
+  if (!isRecord(value) || !Array.isArray(value.tags)) {
+    return [];
+  }
+
+  return value.tags
+    .filter(isRecord)
+    .filter((tag) => typeof tag.id === "number" || typeof tag.id === "string")
+    .map((tag) => ({
+      id: tag.id as number | string,
+      ...(typeof tag.name === "string" ? { name: tag.name } : {}),
+    }));
+}
+
 export function normalizeArticle(payload: unknown): Article | null {
   const value = unwrapPayload(payload);
   if (!value || (typeof value.id !== "string" && typeof value.id !== "number")) return null;
@@ -144,6 +165,7 @@ export function normalizeArticle(payload: unknown): Article | null {
     content,
     createdAt: readNullableString(value.createdAt ?? value.created_at),
     updatedAt: readNullableString(value.updatedAt ?? value.updated_at),
+    tags: readTags(value),
   };
 }
 
@@ -161,6 +183,7 @@ export function normalizeArticleMetadata(payload: unknown): ArticleMetadata | nu
     description: deriveDescription(value, content),
     createdAt: readNullableString(value.createdAt ?? value.created_at),
     updatedAt: readNullableString(value.updatedAt ?? value.updated_at),
+    tags: readTags(value),
   };
 }
 
@@ -170,7 +193,12 @@ async function requestArticle(path: string, init: RequestInit = {}) {
 
 function toArticlePayload(input: CreateArticleInput) {
   const normalized = toArticleInput(input);
-  return { content: encodeMarkdownBase64(normalized.content) };
+  const tagIds = (normalized.tagIds ?? []).filter((tagId) => Number.isInteger(tagId) && tagId > 0);
+
+  return {
+    content: encodeMarkdownBase64(normalized.content),
+    ...(tagIds.length > 0 ? { tag_ids: tagIds } : {}),
+  };
 }
 
 function payloadRows(payload: unknown): unknown[] {
@@ -192,6 +220,27 @@ export async function getArticles(signal?: AbortSignal) {
       description: article.description,
       createdAt: article.createdAt,
       updatedAt: article.updatedAt,
+      tags: article.tags,
+    };
+  });
+}
+
+/**
+ * Lista apenas os artigos que compartilham ao menos uma tag com as tags
+ * escolhidas pelo usuário autenticado.
+ */
+export async function getArticlesByMyTags(signal?: AbortSignal) {
+  const payload = await requestArticle("/articles?tags=mine", { signal });
+  return payloadRows(payload).map((row) => {
+    const article = normalizeArticle(row);
+    if (!article) throw new Error("A resposta de um artigo da listagem está incompleta.");
+    return {
+      id: article.id,
+      title: article.title,
+      description: article.description,
+      createdAt: article.createdAt,
+      updatedAt: article.updatedAt,
+      tags: article.tags,
     };
   });
 }
@@ -230,5 +279,6 @@ export function toArticleInput(input: CreateArticleInput): CreateArticleInput {
     content: readString(input.content),
     ...(typeof input.title === "string" ? { title: input.title.trim() } : {}),
     ...(typeof input.description === "string" ? { description: input.description.trim() } : {}),
+    ...(Array.isArray(input.tagIds) ? { tagIds: input.tagIds } : {}),
   };
 }

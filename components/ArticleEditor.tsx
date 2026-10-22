@@ -58,6 +58,7 @@ export function ArticleEditor({ id }: { id: string }) {
       try {
         const article = await getArticle(id, controller.signal);
         setForm({ content: article.content });
+        setSelectedTagIds(article.tags.map((tag) => String(tag.id)));
       } catch (error) {
         if (!controller.signal.aborted) setLoadError(error);
       } finally {
@@ -80,7 +81,7 @@ export function ArticleEditor({ id }: { id: string }) {
     setIsSaving(true);
 
     try {
-      const input = toArticleInput(form);
+      const input = toArticleInput({ ...form, tagIds: selectedTagIds.map(Number).filter(Number.isInteger) });
       if (isNewArticle) {
         await createArticle(input);
         setHasCreated(true);

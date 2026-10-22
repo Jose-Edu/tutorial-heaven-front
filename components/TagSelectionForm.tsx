@@ -124,7 +124,7 @@ export function TagSelectionForm({ selectedTagIds: selectedTagIdsProp, onChange 
       patchUser({ tags: syncedTags });
 
       setNeedsOnboarding(user, false);
-      router.push("/search");
+      router.push("/dashboard");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Não foi possível guardar as tags.");
     } finally {
