@@ -8,14 +8,21 @@ export type ArticleMetadata = {
   updatedAt: string | null;
 };
 
+export type ArticleTag = {
+  id: string;
+  name?: string;
+};
+
 export type Article = ArticleMetadata & {
   content: string;
+  tags: ArticleTag[];
 };
 
 export type CreateArticleInput = {
   content: string;
   title?: string;
   description?: string;
+  tagIds?: string[];
 };
 
 export type UpdateArticleInput = CreateArticleInput;
@@ -92,6 +99,28 @@ function deriveDescription(value: Record<string, unknown>, markdown: string) {
   return choice.length > 180 ? `${choice.slice(0, 177).trimEnd()}...` : choice;
 }
 
+function normalizeArticleTags(value: unknown): ArticleTag[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+
+  const tags: ArticleTag[] = [];
+  for (const tag of value) {
+    if (
+      !isRecord(tag) ||
+      (typeof tag.id !== "string" && typeof tag.id !== "number")
+    ) {
+      return null;
+    }
+
+    tags.push({
+      id: String(tag.id),
+      ...(typeof tag.name === "string" ? { name: tag.name } : {}),
+    });
+  }
+
+  return tags;
+}
+
 function unwrapPayload(payload: unknown): Record<string, unknown> | null {
   if (!isRecord(payload)) return null;
   const candidate = payload as ArticlePayload;
@@ -136,12 +165,15 @@ export function normalizeArticle(payload: unknown): Article | null {
   if (!contentValue) return null;
 
   const content = decodeMarkdownBase64(contentValue);
+  const tags = normalizeArticleTags(value.tags);
+  if (!tags) return null;
 
   return {
     id: String(value.id),
     title: deriveTitle(value, content),
     description: deriveDescription(value, content),
     content,
+    tags,
     createdAt: readNullableString(value.createdAt ?? value.created_at),
     updatedAt: readNullableString(value.updatedAt ?? value.updated_at),
   };
@@ -168,9 +200,20 @@ async function requestArticle(path: string, init: RequestInit = {}) {
   return requestJson<unknown>(path, init);
 }
 
-function toArticlePayload(input: CreateArticleInput) {
+function toArticlePayload(input: CreateArticleInput, includeEmptyTagIds: boolean) {
   const normalized = toArticleInput(input);
-  return { content: encodeMarkdownBase64(normalized.content) };
+  const tagIds = input.tagIds?.map((tagId) => {
+    const numericId = Number(tagId);
+    if (!Number.isSafeInteger(numericId) || numericId < 1) {
+      throw new Error("As tags do artigo contêm um ID inválido.");
+    }
+    return numericId;
+  });
+
+  return {
+    content: encodeMarkdownBase64(normalized.content),
+    ...(tagIds && (tagIds.length > 0 || includeEmptyTagIds) ? { tag_ids: tagIds } : {}),
+  };
 }
 
 function payloadRows(payload: unknown): unknown[] {
@@ -214,14 +257,14 @@ export async function getArticle(id: string, signal?: AbortSignal) {
 export async function createArticle(input: CreateArticleInput) {
   await requestArticle("/articles", {
     method: "POST",
-    body: JSON.stringify(toArticlePayload(input)),
+    body: JSON.stringify(toArticlePayload(input, false)),
   });
 }
 
 export async function updateArticle(id: string, input: UpdateArticleInput) {
   await requestArticle(`/articles/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify(toArticlePayload(input)),
+    body: JSON.stringify(toArticlePayload(input, true)),
   });
 }
 

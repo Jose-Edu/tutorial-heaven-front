@@ -6,7 +6,9 @@ import {
   encodeMarkdownBase64,
   getArticles,
   getRecommendedArticles,
+  createArticle,
   normalizeArticle,
+  updateArticle,
 } from '../lib/articles';
 
 test('encodes and decodes UTF-8 markdown with accents and emoji', () => {
@@ -38,6 +40,16 @@ test('derives article metadata from markdown when title and description are abse
   assert.equal(article?.title, 'Primeiro artigo');
   assert.equal(article?.description, 'Resumo curta e útil.');
   assert.equal(article?.content, '# Primeiro artigo\n\nResumo curta e útil.');
+});
+
+test('normalizes article tags for preselection in the editor', () => {
+  const article = normalizeArticle({
+    id: 12,
+    content: encodeMarkdownBase64('# Artigo com tags'),
+    tags: [{ id: 4, name: 'PHP / Laravel' }],
+  });
+
+  assert.deepEqual(article?.tags, [{ id: '4', name: 'PHP / Laravel' }]);
 });
 
 test('reads paginated article list from Laravel data envelope', async () => {
@@ -98,6 +110,40 @@ test('loads recommended articles through the recommended search endpoint', async
     assert.equal(requestedMethod, 'GET');
     assert.equal(articles[0].id, '8');
     assert.equal(articles[0].title, 'Recomendado');
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('sends article tags on create and update, including an empty list to clear tags', async () => {
+  const oldFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: Record<string, unknown> }> = [];
+
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? 'GET',
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+    });
+    return new Response(null, { status: init?.method === 'POST' ? 201 : 200 });
+  };
+
+  try {
+    await createArticle({ content: '# Novo artigo', tagIds: ['4', '9'] });
+    await createArticle({ content: '# Sem tags', tagIds: [] });
+    await updateArticle('12', { content: '# Editado', tagIds: [] });
+
+    assert.deepEqual(requests[0], {
+      url: '/articles',
+      method: 'POST',
+      body: { content: encodeMarkdownBase64('# Novo artigo'), tag_ids: [4, 9] },
+    });
+    assert.deepEqual(requests[1].body, { content: encodeMarkdownBase64('# Sem tags') });
+    assert.deepEqual(requests[2], {
+      url: '/articles/12',
+      method: 'PATCH',
+      body: { content: encodeMarkdownBase64('# Editado'), tag_ids: [] },
+    });
   } finally {
     globalThis.fetch = oldFetch;
   }

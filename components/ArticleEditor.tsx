@@ -58,6 +58,7 @@ export function ArticleEditor({ id }: { id: string }) {
       try {
         const article = await getArticle(id, controller.signal);
         setForm({ content: article.content });
+        setSelectedTagIds(article.tags.map((tag) => tag.id));
       } catch (error) {
         if (!controller.signal.aborted) setLoadError(error);
       } finally {
@@ -80,7 +81,7 @@ export function ArticleEditor({ id }: { id: string }) {
     setIsSaving(true);
 
     try {
-      const input = toArticleInput(form);
+      const input = { ...toArticleInput(form), tagIds: selectedTagIds };
       if (isNewArticle) {
         await createArticle(input);
         setHasCreated(true);
@@ -152,7 +153,7 @@ export function ArticleEditor({ id }: { id: string }) {
             <form onSubmit={saveArticle}>
               <Stack spacing={3}>
                 <Alert severity="info" sx={{ mb: 0 }}>
-                  Título e descrição são derivadas do conteúdo em Markdown do artigo, então o payload enviado à API usa apenas o campo <strong>content</strong>.
+                  Título e descrição são derivadas do conteúdo em Markdown. O conteúdo é enviado em Base64 e as tags selecionadas no campo <strong>tag_ids</strong>.
                 </Alert>
                 {fieldErrors.content?.[0] ? <Alert severity="error">{fieldErrors.content[0]}</Alert> : null}
                 <div data-color-mode={isDark ? null : "light"} className={`article-editor overflow-hidden rounded-md border bg-card ${fieldErrors.content ? "border-red-600" : "border-border"}`}>
