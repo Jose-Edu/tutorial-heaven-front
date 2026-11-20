@@ -6,30 +6,38 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import { SearchResultCard } from "@/components/SearchResultCard";
-import { getArticles, type ArticleMetadata } from "@/lib/articles";
+import { getArticles, getRecommendedArticles, type ArticleMetadata } from "@/lib/articles";
 import { HttpError } from "@/lib/http";
 import { FeedbackState } from "@/components/FeedbackState";
 
-export function ArticleSearchResults({ term }: { term: string }) {
+export type ArticleResultsSource = "search" | "recommended";
+
+type ArticleSearchResultsProps = {
+  term: string;
+  source?: ArticleResultsSource;
+};
+
+export function ArticleSearchResults({ term, source = "search" }: ArticleSearchResultsProps) {
   const [articles, setArticles] = useState<ArticleMetadata[]>([]);
   const [error, setError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const fetchArticles = source === "recommended" ? getRecommendedArticles : getArticles;
 
   const loadArticles = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
     try {
-      setArticles(await getArticles(signal));
+      setArticles(await fetchArticles(signal));
     } catch (reason) {
       if (!signal?.aborted) setError(reason);
     } finally {
       if (!signal?.aborted) setIsLoading(false);
     }
-  }, []);
+  }, [fetchArticles]);
 
   useEffect(() => {
     const controller = new AbortController();
-    getArticles(controller.signal).then(
+    fetchArticles(controller.signal).then(
       (result) => {
         if (!controller.signal.aborted) setArticles(result);
       },
@@ -40,16 +48,18 @@ export function ArticleSearchResults({ term }: { term: string }) {
       if (!controller.signal.aborted) setIsLoading(false);
     });
     return () => controller.abort();
-  }, []);
+  }, [fetchArticles]);
 
   const results = useMemo(() => {
+    if (source === "recommended") return articles;
+
     const normalizedTerm = term.toLocaleLowerCase("pt-BR");
     return normalizedTerm
       ? articles.filter(({ title, description }) =>
           `${title} ${description ?? ""}`.toLocaleLowerCase("pt-BR").includes(normalizedTerm),
         )
       : [];
-  }, [articles, term]);
+  }, [articles, source, term]);
 
   if (isLoading) {
     return <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((item) => <Skeleton key={item} variant="rounded" height={210} />)}</div>;
@@ -65,12 +75,18 @@ export function ArticleSearchResults({ term }: { term: string }) {
           : <Button color="inherit" onClick={() => void loadArticles()}>Tentar novamente</Button>}
       >
         {status === 401
-          ? "Entre na sua conta para pesquisar artigos."
+          ? source === "recommended"
+            ? "Entre na sua conta para ver artigos recomendados."
+            : "Entre na sua conta para pesquisar artigos."
           : status === 403
-            ? "Você não tem permissão para pesquisar artigos."
+            ? source === "recommended"
+              ? "Você não tem permissão para ver artigos recomendados."
+              : "Você não tem permissão para pesquisar artigos."
             : error instanceof Error
               ? error.message
-              : "Não foi possível carregar os artigos."}
+              : source === "recommended"
+                ? "Não foi possível carregar os artigos recomendados."
+                : "Não foi possível carregar os artigos."}
       </Alert>
     );
   }
@@ -81,12 +97,12 @@ export function ArticleSearchResults({ term }: { term: string }) {
     </div>
   ) : (
     <FeedbackState
-      title="Nenhum resultado encontrado"
-      description={
-        term
+      title={source === "recommended" ? "Nenhuma recomendação encontrada" : "Nenhum resultado encontrado"}
+      description={source === "recommended"
+        ? "Ainda não há artigos recomendados para o seu perfil."
+        : term
           ? `Não encontramos tutoriais para "${term}". Tente buscar por outro termo.`
-          : "Digite um termo na busca para encontrar tutoriais."
-      }
+          : "Digite um termo na busca para encontrar tutoriais."}
     />
   );
 }
