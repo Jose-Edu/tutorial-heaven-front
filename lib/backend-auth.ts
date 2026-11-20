@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveBackendBaseUrl } from "@/lib/backend-url";
 
 export const authTokenCookieName = "tutorial-heaven-access-token";
 
 function getBackendBaseUrl() {
-  const configuredRoute = (process.env.APP_URL ?? process.env.BACKEND_ROUTE ?? "").trim();
-
-  if (!configuredRoute) {
-    throw new Error("APP_URL or BACKEND_ROUTE is not configured.");
-  }
-
-  return configuredRoute.replace(/\/+$/, "");
+  return resolveBackendBaseUrl(process.env.BACKEND_ROUTE, process.env.APP_URL);
 }
 
 function normalizeBackendPath(pathname: string) {

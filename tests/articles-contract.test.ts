@@ -5,6 +5,7 @@ import {
   decodeMarkdownBase64,
   encodeMarkdownBase64,
   getArticles,
+  getRecommendedArticles,
   normalizeArticle,
 } from '../lib/articles';
 
@@ -64,6 +65,39 @@ test('reads paginated article list from Laravel data envelope', async () => {
     assert.equal(articles[0].id, '5');
     assert.equal(articles[0].title, 'Artigo com acentos e emoji 🚀');
     assert.equal(articles[0].description, 'Texto legal.');
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('loads recommended articles through the recommended search endpoint', async () => {
+  const markdown = '# Recomendado\n\nConteúdo para o perfil.';
+  const oldFetch = globalThis.fetch;
+  let requestedUrl = '';
+  let requestedMethod = '';
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input);
+    requestedMethod = init?.method ?? 'GET';
+    return new Response(
+      JSON.stringify({
+        data: [{
+          id: 8,
+          content: encodeMarkdownBase64(markdown),
+          created_at: '2026-10-12T00:00:00.000000Z',
+          updated_at: '2026-10-12T00:00:00.000000Z',
+        }],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  };
+
+  try {
+    const articles = await getRecommendedArticles();
+    assert.equal(requestedUrl, '/search/recomendados');
+    assert.equal(requestedMethod, 'GET');
+    assert.equal(articles[0].id, '8');
+    assert.equal(articles[0].title, 'Recomendado');
   } finally {
     globalThis.fetch = oldFetch;
   }

@@ -1,12 +1,12 @@
 # Guia oficial de integração do front-end
 
-Este guia descreve como consumir a API Laravel deste projeto. Os exemplos usam `http://localhost:8000`; em cada ambiente, substitua essa origem pelo valor configurado em `APP_URL`.
+Este guia descreve como consumir a API Laravel deste projeto. Os exemplos usam `http://localhost:8000`; em cada ambiente, configure essa origem em `BACKEND_ROUTE`. `APP_URL` continua aceito como fallback para configurações existentes.
 
 ## 1. Visão geral e padrões da API
 
 ### URL base e prefixos
 
-O servidor Laravel é a origem da API, sem o prefixo no valor de `APP_URL`. Todas as rotas ficam na raiz do servidor, sem `/api` nem `/v1`:
+O servidor Laravel é a origem da API. Configure `BACKEND_ROUTE` sem o prefixo `/api` nem `/v1`; essas rotas ficam na raiz do servidor:
 
 - `/login`, `/register`, `/logout`, `/user`: autenticação e consulta do usuário atual.
 - `/tags`, `/tags/steps`, `/articles`, `/users`, `/onboarding/tags`: recursos de artigos, tags e usuários.

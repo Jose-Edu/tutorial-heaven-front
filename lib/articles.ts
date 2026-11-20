@@ -181,8 +181,8 @@ function payloadRows(payload: unknown): unknown[] {
   throw new Error("A resposta da listagem de artigos não contém uma lista de artigos.");
 }
 
-export async function getArticles(signal?: AbortSignal) {
-  const payload = await requestArticle("/articles", { signal });
+async function getArticleMetadataList(path: string, signal?: AbortSignal) {
+  const payload = await requestArticle(path, { signal });
   return payloadRows(payload).map((row) => {
     const article = normalizeArticle(row);
     if (!article) throw new Error("A resposta de um artigo da listagem está incompleta.");
@@ -194,6 +194,14 @@ export async function getArticles(signal?: AbortSignal) {
       updatedAt: article.updatedAt,
     };
   });
+}
+
+export function getArticles(signal?: AbortSignal) {
+  return getArticleMetadataList("/articles", signal);
+}
+
+export function getRecommendedArticles(signal?: AbortSignal) {
+  return getArticleMetadataList("/search/recomendados", signal);
 }
 
 export async function getArticle(id: string, signal?: AbortSignal) {

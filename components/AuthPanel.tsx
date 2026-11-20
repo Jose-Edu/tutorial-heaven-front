@@ -53,11 +53,14 @@ export function AuthPanel() {
             password_confirmation: formState.password,
           });
 
+      const needsOnboarding = initializeNeedsOnboarding(authenticatedUser);
       const redirectPath = authenticatedUser.role === "admin"
         ? "/admin/dashboard"
-        : initializeNeedsOnboarding(authenticatedUser)
+        : needsOnboarding
           ? "/onboarding"
-          : "/search";
+          : mode === "login"
+            ? "/user/dashboard"
+            : "/search";
 
       setAlertState({
         type: "success",
