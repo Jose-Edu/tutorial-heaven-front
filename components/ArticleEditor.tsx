@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
@@ -37,6 +38,7 @@ function getServerThemeSnapshot() {
 }
 
 export function ArticleEditor({ id }: { id: string }) {
+  const router = useRouter();
   const isNewArticle = id === "novo";
   const [form, setForm] = useState<ArticleForm>(emptyForm);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -87,7 +89,7 @@ export function ArticleEditor({ id }: { id: string }) {
         setHasCreated(true);
       }
       else await updateArticle(id, input);
-      setFeedback({ type: "success", message: "Artigo salvo com sucesso." });
+      router.replace("/admin/dashboard");
     } catch (error) {
       setFieldErrors(getArticleErrorFields(error));
       setFeedback({ type: "error", message: error instanceof Error ? error.message : "Não foi possível conectar ao backend agora." });

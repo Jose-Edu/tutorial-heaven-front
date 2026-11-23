@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
@@ -30,7 +30,20 @@ export function AuthPanel() {
   const [alertState, setAlertState] = useState<AlertState>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const redirectAfterSubmit = useRef(false);
   const { user, status, error: authError, login, register, logout } = useAuth();
+
+  useEffect(() => {
+    if (redirectAfterSubmit.current || status !== "authenticated" || !user) return;
+
+    if (user.role === "admin") {
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    const needsOnboarding = initializeNeedsOnboarding(user);
+    router.replace(needsOnboarding ? "/onboarding" : "/user/dashboard");
+  }, [router, status, user]);
 
   function updateField(field: keyof FormState, value: string) {
     setFormState((current) => ({ ...current, [field]: value }));
@@ -39,6 +52,7 @@ export function AuthPanel() {
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    redirectAfterSubmit.current = true;
     setAlertState(null);
     setFieldErrors({});
     setIsSubmitting(true);
@@ -69,6 +83,7 @@ export function AuthPanel() {
       setFormState((current) => ({ ...current, password: "" }));
       router.push(redirectPath);
     } catch (error) {
+      redirectAfterSubmit.current = false;
       const errors = getAuthFieldErrors(error);
       if (errors.password_confirmation && !errors.password) {
         errors.password = errors.password_confirmation;
